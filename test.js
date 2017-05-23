@@ -1,9 +1,11 @@
 var test = require('test-kit').tape()
 var base = require('.')
 
-console.log(base.int())
+var int = base.int()
+var unt = int.subtype({name: 'unt', emb:{range: '0..'}})
+console.log(int.toString(), int.emb.toString())
+console.log(unt.toString(), unt.emb.toString())
 
-console.log(base.int().toString())
 /*
 // vt's (value types) in qb1 are type objects supporting nesting and fast aggregation.  for
 // this module, we only need to assert that types have _str and _jsn functions.

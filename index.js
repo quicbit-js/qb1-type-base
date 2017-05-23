@@ -29,28 +29,35 @@ function init(t, opt) {
         t.xtra = opt.xtra.copy()
         t.all = opt.emb.and(opt.xtra)
     } else {
-        t.xtra = stips(opt.emb.stips_fns)
+        t.xtra = stips(opt.emb.stip_fns)
         t.all = opt.emb.copy()
     }
+}
+
+function assign_some(dst, src, ignore) {
+    Object.keys(src).forEach(function (k) { if(!~ignore.indexOf(k)) { dst[k] = src[k] }})
 }
 
 // create options for a named or anonymous subtype
 function subtype_opt(t, opt) {
     var ret = {}
+    var namesrc
     if (opt.name && opt.name !== t.name) {
         // named subtype - ensure unique names and embed all properties
         opt.fullname !== t.fullname || err(opt.fullname + ' is already defined for ' + t.name)
         opt.shortname !== t.shortname || err(opt.shortname + ' is already defined for ' + t.name)
-        ret.emb = t.all.and(opt)
-        ret.xtra = stips(t.all.stip_fns)
+        namesrc = opt
+        ret.emb = t.all.and(opt.emb || {})
+        ret.xtra = stips(t.all.stip_fns).put(opt.xtra || {})
     } else {
         // define anonymous subtype same name with separate xtra props
-        opt.name = t.name
-        opt.shortname = t.shortname
-        opt.fullname = t.fullname
+        namesrc = t
         ret.emb = t.emb.copy()
         ret.xtra = t.xtra.and(opt.xtra)
     }
+    ret.name = namesrc.name
+    ret.shortname = namesrc.shortname
+    ret.fullname = namesrc.fullname
     return ret
 }
 
@@ -70,16 +77,17 @@ Type.prototype = {
     // opt holds property settings for the new type.  if name is set, properties are combined and embedded with the name of the type,
     // if not, properties are combined with xtra properties and will show in the cannonical name (toString())
     subtype: function (opt) {
-        return new (this.prototype.constructor)(subtype_opt(this, opt || {}))
+        return new (this.constructor)(subtype_opt(this, opt || {}))
     },
     toString: function (opt) { return this._str(opt || {}) },
 }
 
 function Int(opt) {
-    opt.emb = opt.emb || stips({
+    var nopt = assign({}, opt)
+    nopt.emb = opt.emb || stips({
             range: stips.fns.range('..')
         })
-    init(this, opt)
+    init(this, nopt)
 }
 Int.prototype = extend(Type.prototype, {
     constructor: Int,
