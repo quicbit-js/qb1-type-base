@@ -29,7 +29,7 @@ function init(t, opt) {
         t.xtra = opt.xtra.copy()
         t.all = opt.emb.and(opt.xtra)
     } else {
-        t.xtra = stips(emb.stips_fns)
+        t.xtra = stips(opt.emb.stips_fns)
         t.all = opt.emb.copy()
     }
 }
@@ -58,7 +58,11 @@ function subtype_opt(t, opt) {
 function Type(opt) { init(this, opt) }
 Type.prototype = {
     _str: function (opt) {
-        return (this[opt.str_prop] || this.name) + (this.xtra || '')
+        var xopt = {
+            parens: opt.xtra_paren || ['(', ')'],
+            show: opt.xtra_show || 'vals'
+        }
+        return (this[opt.name] || this.name) + (this.xtra.length ? this.xtra.toString(xopt) : '')
     },
     check: function (v) {
         this.all.check(v)
@@ -66,7 +70,7 @@ Type.prototype = {
     // opt holds property settings for the new type.  if name is set, properties are combined and embedded with the name of the type,
     // if not, properties are combined with xtra properties and will show in the cannonical name (toString())
     subtype: function (opt) {
-        return this._new(subtype_opt(this, opt || {}))
+        return new (this.prototype.constructor)(subtype_opt(this, opt || {}))
     },
     toString: function (opt) { return this._str(opt || {}) },
 }
@@ -79,7 +83,6 @@ function Int(opt) {
 }
 Int.prototype = extend(Type.prototype, {
     constructor: Int,
-    _new: function(opt) { return new Int(opt) }
 })
 
 
@@ -160,35 +163,30 @@ TypeSet.prototype = {
 
 function err(msg) { throw Error(msg) }
 
-function base() {
-    var base_types = [
-        // name,        nam,    char    // range,        expression
-        // [ 'blob',       'blb',  'X' ],  // null,          '*' ],
-        [ 'boolean',    'boo',  'b' ],  // '0..1',        'true|false|tru|fal|t|f' ],
-        // [ 'byte',       'byt',  'x' ],  // '0..255',      '[0-9a-fA-F]*' ],
-        // [ 'decimal',    'dec',  'd' ],  // '-inf~~inf',   '[0-9]+',
-        // [ 'float',      'flt',  'f' ],  // '-inf~~inf',    ],
-        // [ 'integer',    'int',  'i' ],  // '-inf~~inf' ],
-        [ 'number',     'num',  'n' ],
-        // [ 'rational',   'rat',  'r' ],
-        [ 'string',     'str',  's' ],
-        // [ 'type',       'typ',  't' ],
-        // [ 'unteger',    'unt',  'u' ],
-
-        // tokens (value = name)
-        [ 'null',       'nul',  'N' ],
-        [ 'false',      'fal',  'F' ],
-        [ 'true',       'tru',  'T' ],
-    ].map(function (r) { return new Type(r[0], r[1], r[2])})  // no stipulations
-    var any = new Type('any', '*', '*')      // represents every type in the set
-    base_types.push(any)
-    base_types.push(new ArrayType(any))
-    base_types.push(new ObjectType(any))
-    base_types.push(new MultiType())
-    return new TypeSet(base_types)
-}
-
-var BASE = base()
+// var BASE_TYPES = [
+//     // name,        nam,    char    // range,        expression
+//     // [ 'blob',       'blb',  'X' ],  // null,          '*' ],
+//     [ 'boolean',    'boo',  'b' ],  // '0..1',        'true|false|tru|fal|t|f' ],
+//     // [ 'byte',       'byt',  'x' ],  // '0..255',      '[0-9a-fA-F]*' ],
+//     // [ 'decimal',    'dec',  'd' ],  // '-inf~~inf',   '[0-9]+',
+//     // [ 'float',      'flt',  'f' ],  // '-inf~~inf',    ],
+//     // [ 'integer',    'int',  'i' ],  // '-inf~~inf' ],
+//     [ 'number',     'num',  'n' ],
+//     // [ 'rational',   'rat',  'r' ],
+//     [ 'string',     'str',  's' ],
+//     // [ 'type',       'typ',  't' ],
+//     // [ 'unteger',    'unt',  'u' ],
+//
+//     // tokens (value = name)
+//     [ 'null',       'nul',  'N' ],
+//     [ 'false',      'fal',  'F' ],
+//     [ 'true',       'tru',  'T' ],
+// ].map(function (r) { return new Type(r[0], r[1], r[2])})  // no stipulations
+// var any = new Type('any', '*', '*')      // represents every type in the set
+// BASE_TYPES.push(any)
+// BASE_TYPES.push(new ArrayType(any))
+// BASE_TYPES.push(new ObjectType(any))
+// BASE_TYPES.push(new MultiType())
 
 // Create a typeset from an array or argument list
 //
@@ -248,5 +246,18 @@ function vargs (args) {
 //     return v
 // }
 
-module.exports = typeset
+function create(ctor, fullname, name, shortname) {
+    return function() {
+        opt = {
+            fullname: fullname,
+            name: name,
+            shortname: shortname,
+        }
+        return new ctor(opt)
+    }
+}
+
+module.exports = {
+    int: create(Int, 'integer', 'int', 'i')
+}
 

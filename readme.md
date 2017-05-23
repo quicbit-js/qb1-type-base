@@ -1,6 +1,6 @@
 # qb1-type-base
 
-Core type definitions for qb1.
+Core types for qb1.
 
 ## Overview
 

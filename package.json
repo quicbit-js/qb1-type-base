@@ -1,13 +1,15 @@
 {
   "name": "qb1-type-base",
   "version": "1.0.0",
-  "description": "Definitions of all fundamental qb1 data types",
+  "description": "Core types for qb1",
   "homepage": "https://github.com/quicbit-js/qb1-type-base",
   "url": "https://github.com/quicbit-js/qb1-type-base/issues",
   "email": "support@quicbit.com",
   "repository": "quicbit-js/qb1-type-base",
   "dependencies": {
-    "qb-extend-flat": "^2.0.2"
+    "qb-assign": "^1.0.1",
+    "qb-extend-flat": "^2.0.2",
+    "qb1-type-stips": "^1.0.0"
   },
   "devDependencies": {
     "tape": "^4.6.3",

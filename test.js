@@ -1,7 +1,10 @@
 var test = require('test-kit').tape()
+var base = require('.')
 
-var type = require('.')
+console.log(base.int())
 
+console.log(base.int().toString())
+/*
 // vt's (value types) in qb1 are type objects supporting nesting and fast aggregation.  for
 // this module, we only need to assert that types have _str and _jsn functions.
 var mockvt = {
@@ -11,21 +14,21 @@ var mockvt = {
 test('str - name', function (t) {
     t.table_assert([
         [ 'name',  'opt',               'exp' ],
-        [ 'boo',  {str_prop: 'name'},   'boo' ],
-        [ 'blb',  {str_prop: 'name'},   'blb' ],
-        [ 'byt',  {str_prop: 'name'},   'byt' ],
-        [ 'dec',  {str_prop: 'name'},   'dec' ],
-        [ 'fal',  {str_prop: 'name'},   'fal' ],
-        [ 'flt',  {str_prop: 'name'},   'flt' ],
-        [ 'int',  {str_prop: 'name'},   'int' ],
-        [ 'nul',  {str_prop: 'name'},   'nul' ],
-        [ 'num',  {str_prop: 'name'},   'num' ],
-        [ 'rat',  {str_prop: 'name'},   'rat' ],
-        [ 'tru',  {str_prop: 'name'},   'tru' ],
-        [ 'typ',  {str_prop: 'name'},   'typ' ],
-        [ 'unt',  {str_prop: 'name'},   'unt' ],
-        [ 'str',  {str_prop: 'name'},   'str' ],
-        [ '*',    {str_prop: 'name'},   '*' ],
+        [ 'boo',  {name: 'name'},   'boo' ],
+        [ 'blb',  {name: 'name'},   'blb' ],
+        [ 'byt',  {name: 'name'},   'byt' ],
+        [ 'dec',  {name: 'name'},   'dec' ],
+        [ 'fal',  {name: 'name'},   'fal' ],
+        [ 'flt',  {name: 'name'},   'flt' ],
+        [ 'int',  {name: 'name'},   'int' ],
+        [ 'nul',  {name: 'name'},   'nul' ],
+        [ 'num',  {name: 'name'},   'num' ],
+        [ 'rat',  {name: 'name'},   'rat' ],
+        [ 'tru',  {name: 'name'},   'tru' ],
+        [ 'typ',  {name: 'name'},   'typ' ],
+        [ 'unt',  {name: 'name'},   'unt' ],
+        [ 'str',  {name: 'name'},   'str' ],
+        [ '*',    {name: 'name'},   '*' ],
     ], function (nam, opt) {
         return type(nam).str(opt)
     })
@@ -34,23 +37,23 @@ test('str - name', function (t) {
 test.only('json - nam', function (t) {
     t.table_assert([
         [ 'name', 'stip',        'opt',               'exp' ],
-        // [ 'boo',  null,          {str_prop: 'name'},   '"boo"' ],
-        // [ 'blb',  null,          {str_prop: 'name'},   '"blb"' ],
-        [ 'blb',  {size:128},    {str_prop: 'name'},   '"blb128"' ],
-        [ 'byt',  null,          {str_prop: 'name'},   '"byt"' ],
-        [ 'dec',  null,          {str_prop: 'name'},   '"dec"' ],
-        [ 'fal',  null,          {str_prop: 'name'},   '"fal"' ],
-        [ 'flt',  null,          {str_prop: 'name'},   '"flt"' ],
-        [ 'int',  null,          {str_prop: 'name'},   '"int"' ],
-        [ 'int',  {size:8},      {str_prop: 'name'},   '"int8"' ],
-        [ 'nul',  null,          {str_prop: 'name'},   '"nul"' ],
-        [ 'num',  null,          {str_prop: 'name'},   '"num"' ],
-        [ 'rat',  null,          {str_prop: 'name'},   '"rat"' ],
-        [ 'tru',  null,          {str_prop: 'name'},   '"tru"' ],
-        [ 'unt',  null,          {str_prop: 'name'},   '"unt"' ],
-        [ 'str',  null,          {str_prop: 'name'},   '"str"' ],
-        [ 'str',  {size:255},    {str_prop: 'name'},   '"str255"' ],
-        [ '*',    null,          {str_prop: 'name'},   '"*"' ],
+        // [ 'boo',  null,          {name: 'name'},   '"boo"' ],
+        // [ 'blb',  null,          {name: 'name'},   '"blb"' ],
+        [ 'blb',  {size:128},    {name: 'name'},   '"blb128"' ],
+        [ 'byt',  null,          {name: 'name'},   '"byt"' ],
+        [ 'dec',  null,          {name: 'name'},   '"dec"' ],
+        [ 'fal',  null,          {name: 'name'},   '"fal"' ],
+        [ 'flt',  null,          {name: 'name'},   '"flt"' ],
+        [ 'int',  null,          {name: 'name'},   '"int"' ],
+        [ 'int',  {size:8},      {name: 'name'},   '"int8"' ],
+        [ 'nul',  null,          {name: 'name'},   '"nul"' ],
+        [ 'num',  null,          {name: 'name'},   '"num"' ],
+        [ 'rat',  null,          {name: 'name'},   '"rat"' ],
+        [ 'tru',  null,          {name: 'name'},   '"tru"' ],
+        [ 'unt',  null,          {name: 'name'},   '"unt"' ],
+        [ 'str',  null,          {name: 'name'},   '"str"' ],
+        [ 'str',  {size:255},    {name: 'name'},   '"str255"' ],
+        [ '*',    null,          {name: 'name'},   '"*"' ],
     ], function (name, stip, opt) {
         return type(name, stip).jsn(opt)
     })
@@ -59,25 +62,25 @@ test.only('json - nam', function (t) {
 test('str - name', function (t) {
     t.table_assert([
         [ 'type', 'stips',        'opt',                'exp' ],
-        [ '*',    null,          {str_prop: 'name'},   'any' ],
-        [ 'arr',  null,          {str_prop: 'name'},   '[any]' ],
-        [ 'boo',  null,          {str_prop: 'name'},   'boolean' ],
-        [ 'blb',  null,          {str_prop: 'name'},   'blob' ],
-        [ 'blb',  {size:128},    {str_prop: 'name'},   'blob128' ],
-        [ 'byt',  null,          {str_prop: 'name'},   'byte' ],
-        [ 'dec',  null,          {str_prop: 'name'},   'decimal' ],
-        [ 'fal',  null,          {str_prop: 'name'},   'false' ],
-        [ 'flt',  null,          {str_prop: 'name'},   'float' ],
-        [ 'int',  null,          {str_prop: 'name'},   'integer' ],
-        [ 'int',  {size:8},      {str_prop: 'name'},   'integer8' ],
-        [ 'nul',  null,          {str_prop: 'name'},   'null' ],
-        [ 'num',  null,          {str_prop: 'name'},   'number' ],
-        [ 'obj',  null,          {str_prop: 'name'},   '{any}' ],
-        [ 'rat',  null,          {str_prop: 'name'},   'rational' ],
-        [ 'tru',  null,          {str_prop: 'name'},   'true' ],
-        [ 'unt',  null,          {str_prop: 'name'},   'unteger' ],
-        [ 'str',  null,          {str_prop: 'name'},   'string' ],
-        [ 'str',  {size:255},    {str_prop: 'name'},   'string255' ],
+        [ '*',    null,          {name: 'name'},   'any' ],
+        [ 'arr',  null,          {name: 'name'},   '[any]' ],
+        [ 'boo',  null,          {name: 'name'},   'boolean' ],
+        [ 'blb',  null,          {name: 'name'},   'blob' ],
+        [ 'blb',  {size:128},    {name: 'name'},   'blob128' ],
+        [ 'byt',  null,          {name: 'name'},   'byte' ],
+        [ 'dec',  null,          {name: 'name'},   'decimal' ],
+        [ 'fal',  null,          {name: 'name'},   'false' ],
+        [ 'flt',  null,          {name: 'name'},   'float' ],
+        [ 'int',  null,          {name: 'name'},   'integer' ],
+        [ 'int',  {size:8},      {name: 'name'},   'integer8' ],
+        [ 'nul',  null,          {name: 'name'},   'null' ],
+        [ 'num',  null,          {name: 'name'},   'number' ],
+        [ 'obj',  null,          {name: 'name'},   '{any}' ],
+        [ 'rat',  null,          {name: 'name'},   'rational' ],
+        [ 'tru',  null,          {name: 'name'},   'true' ],
+        [ 'unt',  null,          {name: 'name'},   'unteger' ],
+        [ 'str',  null,          {name: 'name'},   'string' ],
+        [ 'str',  {size:255},    {name: 'name'},   'string255' ],
     ], function (type, stips, opt) {
         return type(type).str(stips, opt)
     })
@@ -86,26 +89,26 @@ test('str - name', function (t) {
 test('str - char', function (t) {
     t.table_assert([
         [ 'type', 'stips',        'opt',                'exp' ],
-        [ '*',    null,          {str_prop: 'char'},   '*' ],
-        [ 'arr',  null,          {str_prop: 'char'},   '[*]' ],
-        [ 'boo',  null,          {str_prop: 'char'},   'b' ],
-        [ 'blb',  null,          {str_prop: 'char'},   'X' ],
-        [ 'blb',  {size:128},    {str_prop: 'char'},   'X128' ],
-        [ 'byt',  null,          {str_prop: 'char'},   'x' ],
-        [ 'dec',  null,          {str_prop: 'char'},   'd' ],
-        [ 'fal',  null,          {str_prop: 'char'},   'F' ],
-        [ 'flt',  null,          {str_prop: 'char'},   'f' ],
-        [ 'int',  null,          {str_prop: 'char'},   'i' ],
-        [ 'int',  {size:8},      {str_prop: 'char'},   'i8' ],
-        [ 'nul',  null,          {str_prop: 'char'},   'N' ],
-        [ 'num',  null,          {str_prop: 'char'},   'n' ],
-        [ 'obj',  null,          {str_prop: 'char'},   '{*}' ],
-        [ 'rat',  null,          {str_prop: 'char'},   'r' ],
-        [ 'tru',  null,          {str_prop: 'char'},   'T' ],
-        [ 'unt',  null,          {str_prop: 'char'},   'u' ],
-        [ 'unt',  {size:8},      {str_prop: 'char'},   'u8' ],      // equivalent to byte 'x'
-        [ 'str',  null,          {str_prop: 'char'},   's' ],
-        [ 'str',  {size:255},    {str_prop: 'char'},   's255' ],
+        [ '*',    null,          {name: 'char'},   '*' ],
+        [ 'arr',  null,          {name: 'char'},   '[*]' ],
+        [ 'boo',  null,          {name: 'char'},   'b' ],
+        [ 'blb',  null,          {name: 'char'},   'X' ],
+        [ 'blb',  {size:128},    {name: 'char'},   'X128' ],
+        [ 'byt',  null,          {name: 'char'},   'x' ],
+        [ 'dec',  null,          {name: 'char'},   'd' ],
+        [ 'fal',  null,          {name: 'char'},   'F' ],
+        [ 'flt',  null,          {name: 'char'},   'f' ],
+        [ 'int',  null,          {name: 'char'},   'i' ],
+        [ 'int',  {size:8},      {name: 'char'},   'i8' ],
+        [ 'nul',  null,          {name: 'char'},   'N' ],
+        [ 'num',  null,          {name: 'char'},   'n' ],
+        [ 'obj',  null,          {name: 'char'},   '{*}' ],
+        [ 'rat',  null,          {name: 'char'},   'r' ],
+        [ 'tru',  null,          {name: 'char'},   'T' ],
+        [ 'unt',  null,          {name: 'char'},   'u' ],
+        [ 'unt',  {size:8},      {name: 'char'},   'u8' ],      // equivalent to byte 'x'
+        [ 'str',  null,          {name: 'char'},   's' ],
+        [ 'str',  {size:255},    {name: 'char'},   's255' ],
     ], function (type, stips, opt) {
         return type(type).str(stips, opt)
     })
@@ -180,3 +183,5 @@ test('is_def', function (t) {
         [ 'foo',            false ],
     ], type.is_def)
 })
+
+*/
