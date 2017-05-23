@@ -85,8 +85,9 @@ Type.prototype = {
 function Int(opt) {
     var nopt = assign({}, opt)
     nopt.emb = opt.emb || stips({
-            range: stips.fns.range('..')
-        })
+        range: stips.fns.range
+    })
+    nopt.emb.put('range', '0..4', 'and')
     init(this, nopt)
 }
 Int.prototype = extend(Type.prototype, {
@@ -256,12 +257,11 @@ function vargs (args) {
 
 function create(ctor, fullname, name, shortname) {
     return function() {
-        opt = {
+        return new ctor({
             fullname: fullname,
             name: name,
             shortname: shortname,
-        }
-        return new ctor(opt)
+        })
     }
 }
 

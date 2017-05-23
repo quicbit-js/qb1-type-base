@@ -2,9 +2,10 @@ var test = require('test-kit').tape()
 var base = require('.')
 
 var int = base.int()
-var unt = int.subtype({name: 'unt', emb:{range: '0..'}})
 console.log(int.toString(), int.emb.toString())
-console.log(unt.toString(), unt.emb.toString())
+
+// var unt = int.subtype({name: 'unt', emb:{range: '0..'}})
+// console.log(unt.toString(), unt.emb.toString())
 
 /*
 // vt's (value types) in qb1 are type objects supporting nesting and fast aggregation.  for
