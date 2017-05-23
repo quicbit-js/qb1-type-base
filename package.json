@@ -1,0 +1,39 @@
+{
+  "name": "qb1-type-base",
+  "version": "1.0.0",
+  "description": "Definitions of all fundamental qb1 data types",
+  "homepage": "https://github.com/quicbit-js/qb1-type-base",
+  "url": "https://github.com/quicbit-js/qb1-type-base/issues",
+  "email": "support@quicbit.com",
+  "repository": "quicbit-js/qb1-type-base",
+  "dependencies": {
+    "qb-extend-flat": "^2.0.2"
+  },
+  "devDependencies": {
+    "tape": "^4.6.3",
+    "test-kit": "^2.5.1"
+  },
+  "scripts": {
+    "test": "tape test.js",
+    "cov": "tap --coverage-report=html test.js"
+  },
+  "keywords": [
+    "fast",
+    "qb1",
+    "data",
+    "type",
+    "data type",
+    "complex",
+    "nested",
+    "performance",
+    "compact",
+    "compressed",
+    "sequence",
+    "buffer",
+    "array",
+    "encode",
+    "decode"
+  ],
+  "author": "Matthew Voss",
+  "license": "ISC"
+}
