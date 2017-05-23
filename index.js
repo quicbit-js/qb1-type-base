@@ -1,6 +1,7 @@
 var extend = require('qb-extend-flat')
 var assign = require('qb-assign')
-var stips = require('qb1-type-stips')
+var qbstips = require('qb1-type-stips')
+var range = require('qb-range-int')
 
 // initialize a type with name(s) and properties (both embedded, and extra)
 // Embedded properties are implied by the type name identity and cannot be expanded, only further
@@ -9,11 +10,11 @@ var stips = require('qb1-type-stips')
 // a restriction (..-10) "-10 or less to an unt64 creates the empty set.
 //
 //  opt: {
-//      name:           required.  shortish name like 'int64'.  used by default.
+//      name:           required.  brief name like 'int64'.  used by default.
 //      shortname:      (optional) very short name for the most common types like 'i64'
 //      fullname:       (optional) full name like 'integer64'
 //      emb:            StipSet of stips that are implied by the type name
-//      xtra:           StipSet of custom (non-embedded) stips (these are printed in the canonical name)
+//      xtr:            StipSet of 'extra' (non-embedded) stips (these are printed in the canonical name)
 //      all:            StipSet of all stips for the type
 //  }
 //
@@ -25,11 +26,11 @@ function init(t, opt) {
     t.fullname = opt.fullname
     t.shortname = opt.shortname
     t.emb = opt.emb || err('missing stipulations (emb)')
-    if (opt.xtra) {
-        t.xtra = opt.xtra.copy()
-        t.all = opt.emb.and(opt.xtra)
+    if (opt.xtr) {
+        t.xtr = opt.xtr.copy()
+        t.all = opt.emb.and(opt.xtr)
     } else {
-        t.xtra = stips(opt.emb.stip_fns)
+        t.xtr = qbstips(opt.emb.stip_fns)
         t.all = opt.emb.copy()
     }
 }
@@ -48,12 +49,12 @@ function subtype_opt(t, opt) {
         opt.shortname !== t.shortname || err(opt.shortname + ' is already defined for ' + t.name)
         namesrc = opt
         ret.emb = t.all.and(opt.emb || {})
-        ret.xtra = stips(t.all.stip_fns).put(opt.xtra || {})
+        ret.xtr = qbstips(t.all.stip_fns).put(opt.xtr || {})
     } else {
         // define anonymous subtype same name with separate xtra props
         namesrc = t
         ret.emb = t.emb.copy()
-        ret.xtra = t.xtra.and(opt.xtra)
+        ret.xtr = t.xtr.and(opt.xtr)
     }
     ret.name = namesrc.name
     ret.shortname = namesrc.shortname
@@ -69,7 +70,7 @@ Type.prototype = {
             parens: opt.xtra_paren || ['(', ')'],
             show: opt.xtra_show || 'vals'
         }
-        return (this[opt.name] || this.name) + (this.xtra.length ? this.xtra.toString(xopt) : '')
+        return (this[opt.name] || this.name) + (this.xtr.length ? this.xtr.toString(xopt) : '')
     },
     check: function (v) {
         this.all.check(v)
@@ -79,13 +80,20 @@ Type.prototype = {
     subtype: function (opt) {
         return new (this.constructor)(subtype_opt(this, opt || {}))
     },
+    info: function () {
+        return {
+            names: '[' + [this.toString({name:'fullname'}), this.toString(), this.toString({name:'shortname'})].join(', ') + ']',
+            emb: this.xtr.toString(),
+            xtr: this.xtr.toString(),
+        }
+    },
     toString: function (opt) { return this._str(opt || {}) },
 }
 
 function Int(opt) {
     var nopt = assign({}, opt)
-    nopt.emb = opt.emb || stips({
-        range: stips.fns.range
+    nopt.emb = opt.emb || qbstips({
+        range: range
     })
     nopt.emb.put('range', '0..4', 'and')
     init(this, nopt)
@@ -115,7 +123,7 @@ ArrayType.prototype = extend( Type.prototype, {
     // { $name: result, output: float, label: string }
     _str: function (opt) {
         var vtype = this.vtype.toString(opt)
-        var args = xtra.as_args(opt)
+        var args = xtr.as_args(opt)
         return '[' + [].concat(vtype, args).join(',') + ']'
     },
 })

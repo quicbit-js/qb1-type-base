@@ -9,6 +9,7 @@
   "dependencies": {
     "qb-assign": "^1.0.1",
     "qb-extend-flat": "^2.0.2",
+    "qb-range-int": "^1.0.0",
     "qb1-type-stips": "^1.0.0"
   },
   "devDependencies": {
