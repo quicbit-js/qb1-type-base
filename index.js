@@ -67,8 +67,8 @@ function Type(opt) { init(this, opt) }
 Type.prototype = {
     _str: function (opt) {
         var xopt = {
-            parens: opt.xtra_paren || ['(', ')'],
-            show: opt.xtra_show || 'vals'
+            parens: opt.xtr_paren || ['(', ')'],
+            show: opt.xtr_show || 'vals'
         }
         return (this[opt.name] || this.name) + (this.xtr.length ? this.xtr.toString(xopt) : '')
     },
@@ -83,7 +83,7 @@ Type.prototype = {
     info: function () {
         return {
             names: '[' + [this.toString({name:'fullname'}), this.toString(), this.toString({name:'shortname'})].join(', ') + ']',
-            emb: this.xtr.toString(),
+            emb: this.emb.toString(),
             xtr: this.xtr.toString(),
         }
     },
@@ -92,10 +92,8 @@ Type.prototype = {
 
 function Int(opt) {
     var nopt = assign({}, opt)
-    nopt.emb = opt.emb || qbstips({
-        range: range
-    })
-    nopt.emb.put('range', '0..4', 'and')
+    nopt.emb = qbstips({range: range}, {range: '1..5'})
+    nopt.emb.put('range', '2..4', 'and')
     init(this, nopt)
 }
 Int.prototype = extend(Type.prototype, {
