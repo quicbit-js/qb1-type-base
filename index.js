@@ -81,25 +81,25 @@ Type.prototype = {
         return new (this.constructor)(subtype_opt(this, opt || {}))
     },
     info: function () {
-        return {
+        var ret = {
             names: '[' + [this.toString({name:'fullname'}), this.toString(), this.toString({name:'shortname'})].join(', ') + ']',
-            emb: this.emb.toString(),
-            xtr: this.xtr.toString(),
         }
+        if (this.emb.length) { ret.emb = this.emb.toString() }
+        if (this.xtr.length) { ret.xtr = this.xtr.toString() }
+        return ret
     },
     toString: function (opt) { return this._str(opt || {}) },
 }
 
-function Int(opt) {
-    var nopt = assign({}, opt)
-    nopt.emb = qbstips({range: range}, {range: '1..5'})
-    nopt.emb.put('range', '2..4', 'and')
-    init(this, nopt)
-}
-Int.prototype = extend(Type.prototype, {
-    constructor: Int,
-})
-
+// example of prototype-type
+// function Int(opt) {
+//     var nopt = assign({}, opt)
+//     nopt.emb = qbstips({range: range}, {range: '1..5'})
+//     nopt.emb.put('range', '2..4', 'and')
+//     init(this, nopt)
+// }
+// Int.prototype = extend(Type.prototype, { constructor: Int })
+//
 
 function ArrayType(opt) {
     init(this, opt)
@@ -261,17 +261,27 @@ function vargs (args) {
 //     return v
 // }
 
-function create(ctor, fullname, name, shortname) {
+function create(fullname, name, shortname, emb) {
     return function() {
-        return new ctor({
-            fullname: fullname,
+        var emb_fns = {}
+        var emb_stips = {}
+        Object.keys(emb).forEach(function (k) { emb_fns[k] = emb[k][0]; emb_stips[k] = emb[k][1] })
+        return new Type({
             name: name,
+            fullname: fullname,
             shortname: shortname,
+            emb: qbstips(emb_fns, emb_stips),
         })
     }
 }
 
 module.exports = {
-    int: create(Int, 'integer', 'int', 'i')
+    // int: create(Int, 'integer', 'int', 'i')
+    int: create('integer', 'int', 'i', { range: [range, '..'] }),
+    unt: create('unteger', 'unt', 'u', { range: [range, '0..'] }),
+    str: create('string', 'str', 's', {} ),
+    // flt: create('float', 'flt', 'f', { range: [range]} ),
+    num: create('number', 'num', 'n', {range: []})
+
 }
 
