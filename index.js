@@ -1,7 +1,7 @@
 var extend = require('qb-extend-flat')
 var assign = require('qb-assign')
 var qbstips = require('qb1-type-stips')
-var range = require('qb-range-int')
+var range = require('qb-range')
 
 // initialize a type with name(s) and properties (both embedded, and extra)
 // Embedded properties are implied by the type name identity and cannot be expanded, only further
@@ -277,11 +277,11 @@ function create(fullname, name, shortname, emb) {
 
 module.exports = {
     // int: create(Int, 'integer', 'int', 'i')
-    int: create('integer', 'int', 'i', { range: [range, '..'] }),
-    unt: create('unteger', 'unt', 'u', { range: [range, '0..'] }),
-    str: create('string', 'str', 's', {} ),
-    // flt: create('float', 'flt', 'f', { range: [range]} ),
-    num: create('number', 'num', 'n', {range: []})
-
+    int: create('integer', 'int', 'i', { range: [range, '~~'] }),
+    unt: create('unteger', 'unt', 'u', { range: [range, '0..~'] }),
+    // str: create('string', 'str', 's', { regex: [regex, '*'] }),
+    flt: create('float', 'flt', 'f', { range: [range, '~~'] } ),
+    num: create('number', 'num', 'n', { range: [range, '~~'] }),
+    boo: create('boolean', 'boo', 'b', { enum: []})
 }
 
