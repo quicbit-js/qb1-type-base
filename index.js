@@ -44,7 +44,8 @@ var TCODE = qbobj.TCODE
 // actually 'object' types with the stipulation that keys start with a letter and may not contain '*'.
 //
 function Type (props, tset) {
-    this.tset = tset || BOOTSTRAP_TYPESET
+    this.tset = function () { return tset }
+
     // props
     this.name = props.name
     this.desc = props.desc
@@ -64,12 +65,15 @@ Type.prototype = {
     type: 'type',
     constructor: Type,
     toString: function () { return this.name },
+    copy: function (tset) {
+        return new CTORS_BY_BASE[this.base](this, tset)
+    },
     toObj: function (tnf) {
         tnf = tnf || 'name'
         if (this.isBase()) {
             return this[tnf]
         }
-        return copy_props(this, {}, tnf, this.tset)
+        return copy_props(this, {}, tnf, this.tset())
     },
     isBase: function () { return this.name === this.base }
 }
@@ -98,8 +102,8 @@ function copy_prop (name, tnf, src, dst) {
 }
 
 // Any
-function AnyType (props) {
-    Type.call(this, props)
+function AnyType (props, tset) {
+    Type.call(this, props, tset)
 }
 AnyType.prototype = extend(Type.prototype, {
     base: '*',
@@ -107,8 +111,8 @@ AnyType.prototype = extend(Type.prototype, {
 })
 
 // Array
-function ArrType (props) {
-    Type.call(this, props)
+function ArrType (props, tset) {
+    Type.call(this, props, tset)
     this.items = props.items || ['*']
 }
 ArrType.prototype = extend(Type.prototype, {
@@ -119,7 +123,7 @@ ArrType.prototype = extend(Type.prototype, {
             return ['*']
         }
         var items = []
-        var tset = this.tset
+        var tset = this.tset()
         this.items.forEach(function (item) {
             if (typeof item === 'string') {
                 item = tset.get(item)[tnf]
@@ -132,7 +136,7 @@ ArrType.prototype = extend(Type.prototype, {
         // return a simple array if there is only one property (the base)
         var ret
         if (has_props(this)) {
-            ret = copy_props(this, {}, tnf, this.tset)
+            ret = copy_props(this, {}, tnf, this.tset())
             ret.$items = items
         } else {
             ret = items
@@ -142,8 +146,8 @@ ArrType.prototype = extend(Type.prototype, {
 })
 
 // Blob
-function BlbType (props) {
-    Type.call(this, props)
+function BlbType (props, tset) {
+    Type.call(this, props, tset)
 }
 BlbType.prototype = extend(Type.prototype, {
     base: 'blb',
@@ -151,8 +155,8 @@ BlbType.prototype = extend(Type.prototype, {
 })
 
 // Boolean
-function BooType (props) {
-    Type.call(this, props)
+function BooType (props, tset) {
+    Type.call(this, props, tset)
 }
 BooType.prototype = extend(Type.prototype, {
     base: 'boo',
@@ -160,8 +164,8 @@ BooType.prototype = extend(Type.prototype, {
 })
 
 // Byte
-function BytType (props) {
-    Type.call(this, props)
+function BytType (props, tset) {
+    Type.call(this, props, tset)
 }
 BytType.prototype = extend(Type.prototype, {
     base: 'byt',
@@ -169,8 +173,8 @@ BytType.prototype = extend(Type.prototype, {
 })
 
 // Decimal
-function DecType (props) {
-    Type.call(this, props)
+function DecType (props, tset) {
+    Type.call(this, props, tset)
 }
 DecType.prototype = extend(Type.prototype, {
     base: 'dec',
@@ -178,8 +182,8 @@ DecType.prototype = extend(Type.prototype, {
 })
 
 // Float
-function FltType (props) {
-    Type.call(this, props)
+function FltType (props, tset) {
+    Type.call(this, props, tset)
 }
 FltType.prototype = extend(Type.prototype, {
     base: 'flt',
@@ -187,8 +191,8 @@ FltType.prototype = extend(Type.prototype, {
 })
 
 // Multiple
-function MulType (props) {
-    Type.call(this, props)
+function MulType (props, tset) {
+    Type.call(this, props, tset)
 }
 MulType.prototype = extend(Type.prototype, {
     base: 'mul',
@@ -197,8 +201,8 @@ MulType.prototype = extend(Type.prototype, {
 
 
 // Integer
-function IntType (props) {
-    Type.call(this, props)
+function IntType (props, tset) {
+    Type.call(this, props, tset)
 }
 IntType.prototype = extend(Type.prototype, {
     base: 'int',
@@ -206,8 +210,8 @@ IntType.prototype = extend(Type.prototype, {
 })
 
 // Number
-function NumType (props) {
-    Type.call(this, props)
+function NumType (props, tset) {
+    Type.call(this, props, tset)
 }
 NumType.prototype = extend(Type.prototype, {
     base: 'num',
@@ -215,8 +219,8 @@ NumType.prototype = extend(Type.prototype, {
 })
 
 // Object - like record, but has one or more expressions
-function ObjType (props) {
-    Type.call(this, props)
+function ObjType (props, tset) {
+    Type.call(this, props, tset)
     this.expr = props.expr || {'*':'*'}
     this.fields = props.fields || {}
 }
@@ -225,7 +229,7 @@ ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
     toObj: function (tnf) {
         if (has_props(this)) {
-            var ret = copy_props(this, {}, tnf, this.tset, {skip: {base:1}})
+            var ret = copy_props(this, {}, tnf, this.tset(), {skip: {base:1}})
             ret = qbobj.map(this.fields, null, function (k,v) { return v.toObj && v.toObj(tnf) || v }, {init: ret})
             ret = qbobj.map(this.expr, null, function (k,v) { return v.toObj && v.toObj(tnf) || v }, {init: ret})
         }
@@ -236,15 +240,15 @@ ObjType.prototype = extend(Type.prototype, {
 })
 
 // Record
-function RecType (props) {
-    Type.call(this, props)
+function RecType (props, tset) {
+    Type.call(this, props, tset)
     this.fields = props.fields || {}
 }
 RecType.prototype = extend(Type.prototype, {
     base: 'rec',
     constructor: RecType,
     toObj: function (tnf) {
-        var ret = copy_props(this, {}, tnf, this.tset, {skip: {base:1}})
+        var ret = copy_props(this, {}, tnf, this.tset(), {skip: {base:1}})
         if (typeof ret === 'object') {
             ret = qbobj.map(this.fields, null, function (k,v) { return v.toObj && v.toObj(tnf) || v }, {init: ret})
         }
@@ -253,8 +257,8 @@ RecType.prototype = extend(Type.prototype, {
 })
 
 // String
-function StrType (props) {
-    Type.call(this, props)
+function StrType (props, tset) {
+    Type.call(this, props, tset)
 }
 StrType.prototype = extend(Type.prototype, {
     base: 'str',
@@ -262,8 +266,8 @@ StrType.prototype = extend(Type.prototype, {
 })
 
 // Type (Type)
-function TypType (props) {
-    Type.call(this, props)
+function TypType (props, tset) {
+    Type.call(this, props, tset)
 }
 TypType.prototype = extend(Type.prototype, {
     base: 'typ',
@@ -271,8 +275,8 @@ TypType.prototype = extend(Type.prototype, {
 })
 
 // False
-function FalType (props) {
-    Type.call(this, props)
+function FalType (props, tset) {
+    Type.call(this, props, tset)
 }
 FalType.prototype = extend(Type.prototype, {
     base: 'fal',
@@ -280,8 +284,8 @@ FalType.prototype = extend(Type.prototype, {
 })
 
 // True
-function TruType (props) {
-    Type.call(this, props)
+function TruType (props, tset) {
+    Type.call(this, props, tset)
 }
 TruType.prototype = extend(Type.prototype, {
     base: 'tru',
@@ -289,8 +293,8 @@ TruType.prototype = extend(Type.prototype, {
 })
 
 // Null
-function NulType (props) {
-    Type.call(this, props)
+function NulType (props, tset) {
+    Type.call(this, props, tset)
 }
 NulType.prototype = extend(Type.prototype, {
     base: 'nul',
@@ -493,10 +497,6 @@ var TYPE_NAMES_TO_NAME = TYPE_DATA.reduce(function (m, r) {
     return m
 }, {})
 
-function bootstrap_types () {
-    return TYPE_DATA.map(function (r) { return new (CTORS_BY_BASE[r[1]])({tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }) })
-}
-
 function Prop(tinyname, name, fullname, type, desc) {
     this.name = name || err('missing property name')
     this.tinyname = tinyname || name
@@ -550,6 +550,10 @@ function Typeset(opt) {
 Typeset.prototype = {
     constructor: Typeset,
     _put: function (t) {
+        // make this typeset the owner, managing prior typesets via copy
+        if (t.tset() !== this) {
+            t = t.copy(this)
+        }
         var name = t.name || ROOT_NAME
         if (!this.overwrite) {
             if (this.get(name) || (t.tinyname && this.get(t.tinyname)) || (t.fullname && this.get(t.fullname))) {
@@ -610,9 +614,9 @@ Typeset.prototype = {
 
 function err (msg) { throw Error(msg) }
 
-var TYPES = bootstrap_types()
-var TYPES_BY_NAME = TYPES.reduce(function (m, t) { m[t.tinyname] = t; m[t.name] = t; m[t.fullname] = t; return m }, {})
-var BOOTSTRAP_TYPESET = TYPES.reduce(function (tset, t) { tset._put(t); return tset }, new Typeset({rw:true, overwrite: false}))
+var BOOTSTRAP_TYPESET = new Typeset({rw:true, overwrite: false})
+var TYPES = TYPE_DATA.map(function (r) { return new (CTORS_BY_BASE[r[1]])({tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }, BOOTSTRAP_TYPESET) })
+TYPES.forEach(function (t) { BOOTSTRAP_TYPESET._put(t) })
 
 function typeset(types, opt) {
     types = types || []

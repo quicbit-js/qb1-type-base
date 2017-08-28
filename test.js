@@ -173,11 +173,11 @@ test('get', function (t) {
         [ 'n',              'exp'  ],
         [ undefined,        undefined ],
         [ 'my_a',           undefined ],
-        [ 's',              { desc: 'A string of unicode characters (code points in range 0..1114111)', fullname: 'string', name: 'str', stip: null, tinyname: 's', tset: undefined } ],
-        [ 'str',            { desc: 'A string of unicode characters (code points in range 0..1114111)', fullname: 'string', name: 'str', stip: null, tinyname: 's', tset: undefined } ],
-        [ 'string',         { desc: 'A string of unicode characters (code points in range 0..1114111)', fullname: 'string', name: 'str', stip: null, tinyname: 's', tset: undefined } ],
+        [ 's',              'str' ],
+        [ 'str',            'str' ],
+        [ 'string',         'str' ],
     ], function (n) {
-        return ts.get(n) })
+        return ts.get(n) && ts.get(n).toObj() })
 })
 
 test('put', function (t) {
@@ -194,7 +194,7 @@ test('put', function (t) {
     ], function (obj) {
         var ts = typeset([])
         var root = ts.put(obj)
-        return [ root, ts.get(root).toObj('tinyname') ]
+        return [ root, ts.get(root) && ts.get(root).toObj('tinyname') ]
     })
 })
 
