@@ -1,11 +1,11 @@
 # qb1-type-base
 
-Core types for qb1.
+Definitions of the fundamental 'base' types underpinning qb1 serialization.
 
 ## Overview
 
-qb1-type-base defines the flexible identities of types allowing qb1 to read and write type information 
-in highly intuitive as well as compact forms, as clean strings, or using JSON format
+qb1-type-base defines the basic types which support reading and writing structured information 
+in intuitive as well as compact forms, as clean strings, or using JSON format
 
 ### Representing Types as Simple Strings
 
@@ -33,7 +33,7 @@ with qb1.
 
 ## Basic Types
 
-This brief overview of qb1 types is covered in more detail in the qb1-type project.  While
+This brief overview of qb1 types is covered in more detail in the qb1-typex project.  While
 perusing the types, keep in mind that none of these types have upper limits.  number,
 string, integer, etc have no bounds.  See the Constraints section for options on
 constraining values to desired size limits.
@@ -116,7 +116,7 @@ other types, with the exception of blob, are lower case.
 
 ## Compound Types
 
-type-def does not handle compound types but qb1 does.  See qb1-type-set or qb1-type for more information
+type-def does not handle compound types but qb1 does.  See qb1-typex-set or qb1-typex for more information
 on compound types like <code>[str|int|boo]</code> (array of string-or-integer-or-boolean))
 
 ## Number Size Constraints (bits)
@@ -162,4 +162,4 @@ to think of concrete physical limits taking precedence over business limits, not
 
 ## Compound Types, Binary Interoperability and More...
 
-See qb1-type for deeper and broader coverage of qb1 types.
+See qb1-typex for deeper and broader coverage of qb1 types.

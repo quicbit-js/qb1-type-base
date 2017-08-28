@@ -1,287 +1,628 @@
-var extend = require('qb-extend-flat')
+// Software License Agreement (ISC License)
+//
+// Copyright (c) 2017, Matthew Voss
+//
+// Permission to use, copy, modify, and/or distribute this software for
+// any purpose with or without fee is hereby granted, provided that the
+// above copyright notice and this permission notice appear in all copies.
+//
+// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+// ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+// ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+// OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 var assign = require('qb-assign')
-var qbstips = require('qb1-type-stips')
-var range = require('qb-range')
+var extend = require('qb-extend-flat')
+var qbobj = require('qb1-obj')
+var TCODE = qbobj.TCODE
 
-// initialize a type with name(s) and properties (both embedded, and extra)
-// Embedded properties are implied by the type name identity and cannot be expanded, only further
-// constrained (i.e. using prop.and(), not prop.or()).
-// IOW an unt64 with a restriction "10 or greater" can be represented as unsigned integer 'unt64(10..)' but adding
-// a restriction (..-10) "-10 or less to an unt64 creates the empty set.
+// qb1 core/bootstrap types.  all types are extensions or assemblies of these core types.
+// Each built-in type has the form:
 //
-//  opt: {
-//      name:           required.  brief name like 'int64'.  used by default.
-//      shortname:      (optional) very short name for the most common types like 'i64'
-//      fullname:       (optional) full name like 'integer64'
-//      emb:            StipSet of stips that are implied by the type name
-//      xtr:            StipSet of 'extra' (non-embedded) stips (these are printed in the canonical name)
-//      all:            StipSet of all stips for the type
-//  }
+//      { $type: type, $nam: str }
 //
-// Design note: we could store the canonical string form of embedded and xtra properties rather than keeping full
-// objects (to be light weight when simply comparing and printing).  Or we could keep emb and xtra as arrays of
-// stip keys (which are in all).
-function init(t, opt) {
-    t.name = opt.name || err('missing name')    // make name a "normal" enumerable property (for debugging)
-    t.fullname = opt.fullname
-    t.shortname = opt.shortname
-    t.emb = opt.emb || err('missing stipulations (emb)')
-    if (opt.xtr) {
-        t.xtr = opt.xtr.copy()
-        t.all = opt.emb.and(opt.xtr)
+// ... where the 'type' value is any registered type (recursive).  Since 'type' is the default for every
+// type object, we can express the built-in types more succinctly as:
+//
+//      { $name: str }
+//
+// Custom record types are defined:
+//
+//      { $name: str, key1: type, key2: type, ... }
+//
+// ... again where keys are strings and 'type' values are any registered type (recursive)
+//
+// Objects have the same form -
+//
+//      { $name: str, key1: type, key2: type, ... }
+//
+// ... however, at least one of the keys must have a wild card '*' to be considered an object (and not a record).
+// Unlike records that have fixed structure, an object allows unlimited key possibilties.  Definitions of records themselves are
+// actually 'object' types with the stipulation that keys start with a letter and may not contain '*'.
+//
+function Type (props, tset) {
+    this.tset = tset || BOOTSTRAP_TYPESET
+    // props
+    this.name = props.name
+    this.desc = props.desc
+    if (props.name) {
+        this.tinyname = props.tinyname || props.name
+        this.fullname = props.fullname || props.name
     } else {
-        t.xtr = qbstips(opt.emb.stip_fns)
-        t.all = opt.emb.copy()
+        !props.tinyname || err('tinyname without name')
+        !props.fullname || err('fullname without name')
+        this.tinyname = this.fullname = null
+    }
+
+    this.stip = props.stip || null
+}
+Type.prototype = {
+    base: null,
+    type: 'type',
+    constructor: Type,
+    toString: function () { return this.name },
+    toObj: function (tnf) {
+        tnf = tnf || 'name'
+        if (this.isBase()) {
+            return this[tnf]
+        }
+        return copy_props(this, {}, tnf, this.tset)
+    },
+    isBase: function () { return this.name === this.base }
+}
+
+// return true if significant user type properties have been set
+function has_props (src) {
+    return !!(src.name || src.desc || src.stip)
+}
+function copy_props (src, dst, tnf, tset, opt) {
+    var skip = opt && opt.skip || {}
+    if (!skip.base) {
+        dst['$' + PROPS_BY_NAME.base[tnf]] = tset.get(src.base)[tnf]
+    }
+    if (!skip.name) { copy_prop('name', tnf, src, dst) }
+    if (!skip.desc) { copy_prop('desc', tnf, src, dst) }
+    if (!skip.tinyname && src.tinyname && src.tinyname !== src.name) { copy_prop('tinyname', tnf, src, dst) }
+    if (!skip.fullname && src.fullname && src.fullname !== src.name) { copy_prop('fullname', tnf, src, dst) }
+    if (!skip.stip) { copy_prop('stip', tnf, src, dst) }
+    return dst
+}
+
+function copy_prop (name, tnf, src, dst) {
+    if (src[name] != null) {
+        dst['$' + PROPS_BY_NAME[name][tnf]] = src[name]
     }
 }
 
-function assign_some(dst, src, ignore) {
-    Object.keys(src).forEach(function (k) { if(!~ignore.indexOf(k)) { dst[k] = src[k] }})
+// Any
+function AnyType (props) {
+    Type.call(this, props)
+}
+AnyType.prototype = extend(Type.prototype, {
+    base: '*',
+    constructor: AnyType,
+})
+
+// Array
+function ArrType (props) {
+    Type.call(this, props)
+    this.items = props.items || ['*']
+}
+ArrType.prototype = extend(Type.prototype, {
+    base: 'arr',
+    constructor: ArrType,
+    toObj: function (tnf) {
+        if (this.isBase()) {
+            return ['*']
+        }
+        var items = []
+        var tset = this.tset
+        this.items.forEach(function (item) {
+            if (typeof item === 'string') {
+                item = tset.get(item)[tnf]
+            } else if (item.toObj) {
+                item = item.toObj(tnf)
+            }
+            items.push(item)
+        })
+
+        // return a simple array if there is only one property (the base)
+        var ret
+        if (has_props(this)) {
+            ret = copy_props(this, {}, tnf, this.tset)
+            ret.$items = items
+        } else {
+            ret = items
+        }
+        return ret
+    }
+})
+
+// Blob
+function BlbType (props) {
+    Type.call(this, props)
+}
+BlbType.prototype = extend(Type.prototype, {
+    base: 'blb',
+    constructor: BlbType,
+})
+
+// Boolean
+function BooType (props) {
+    Type.call(this, props)
+}
+BooType.prototype = extend(Type.prototype, {
+    base: 'boo',
+    constructor: BooType,
+})
+
+// Byte
+function BytType (props) {
+    Type.call(this, props)
+}
+BytType.prototype = extend(Type.prototype, {
+    base: 'byt',
+    constructor: BytType,
+})
+
+// Decimal
+function DecType (props) {
+    Type.call(this, props)
+}
+DecType.prototype = extend(Type.prototype, {
+    base: 'dec',
+    constructor: DecType,
+})
+
+// Float
+function FltType (props) {
+    Type.call(this, props)
+}
+FltType.prototype = extend(Type.prototype, {
+    base: 'flt',
+    constructor: FltType,
+})
+
+// Multiple
+function MulType (props) {
+    Type.call(this, props)
+}
+MulType.prototype = extend(Type.prototype, {
+    base: 'mul',
+    constructor: MulType,
+})
+
+
+// Integer
+function IntType (props) {
+    Type.call(this, props)
+}
+IntType.prototype = extend(Type.prototype, {
+    base: 'int',
+    constructor: IntType,
+})
+
+// Number
+function NumType (props) {
+    Type.call(this, props)
+}
+NumType.prototype = extend(Type.prototype, {
+    base: 'num',
+    constructor: NumType,
+})
+
+// Object - like record, but has one or more expressions
+function ObjType (props) {
+    Type.call(this, props)
+    this.expr = props.expr || {'*':'*'}
+    this.fields = props.fields || {}
+}
+ObjType.prototype = extend(Type.prototype, {
+    base: 'obj',
+    constructor: ObjType,
+    toObj: function (tnf) {
+        if (has_props(this)) {
+            var ret = copy_props(this, {}, tnf, this.tset, {skip: {base:1}})
+            ret = qbobj.map(this.fields, null, function (k,v) { return v.toObj && v.toObj(tnf) || v }, {init: ret})
+            ret = qbobj.map(this.expr, null, function (k,v) { return v.toObj && v.toObj(tnf) || v }, {init: ret})
+        }
+        if (typeof ret === 'object' ) {
+        }
+        return ret
+    }
+})
+
+// Record
+function RecType (props) {
+    Type.call(this, props)
+    this.fields = props.fields || {}
+}
+RecType.prototype = extend(Type.prototype, {
+    base: 'rec',
+    constructor: RecType,
+    toObj: function (tnf) {
+        var ret = copy_props(this, {}, tnf, this.tset, {skip: {base:1}})
+        if (typeof ret === 'object') {
+            ret = qbobj.map(this.fields, null, function (k,v) { return v.toObj && v.toObj(tnf) || v }, {init: ret})
+        }
+        return ret
+    }
+})
+
+// String
+function StrType (props) {
+    Type.call(this, props)
+}
+StrType.prototype = extend(Type.prototype, {
+    base: 'str',
+    constructor: StrType,
+})
+
+// Type (Type)
+function TypType (props) {
+    Type.call(this, props)
+}
+TypType.prototype = extend(Type.prototype, {
+    base: 'typ',
+    constructor: TypType,
+})
+
+// False
+function FalType (props) {
+    Type.call(this, props)
+}
+FalType.prototype = extend(Type.prototype, {
+    base: 'fal',
+    constructor: FalType,
+})
+
+// True
+function TruType (props) {
+    Type.call(this, props)
+}
+TruType.prototype = extend(Type.prototype, {
+    base: 'tru',
+    constructor: TruType,
+})
+
+// Null
+function NulType (props) {
+    Type.call(this, props)
+}
+NulType.prototype = extend(Type.prototype, {
+    base: 'nul',
+    constructor: NulType,
+})
+
+var CTORS = [ AnyType, ArrType, BooType, BlbType, BytType, DecType, FltType, MulType, IntType, NumType, ObjType, RecType, StrType, TypType, FalType, TruType, NulType ]
+
+var CTORS_BY_BASE = CTORS.reduce(function (m, ctor) { m[ctor.prototype.base] = ctor; return m }, {})
+
+// return true if string s has character c and is not preceded by an odd number of consecutive escapes e)
+function has_char (s, c, e) {
+    var i = 0
+    while ((i = s.indexOf(c, i)) !== -1) {
+        for (var n = 1; s[i-n] === e; n++) {}  // c = preceeding escape count (+1)
+        if (n % 2) {
+            return true
+        }
+        i++
+    }
+    return false
 }
 
-// create options for a named or anonymous subtype
-function subtype_opt(t, opt) {
-    var ret = {}
-    var namesrc
-    if (opt.name && opt.name !== t.name) {
-        // named subtype - ensure unique names and embed all properties
-        opt.fullname !== t.fullname || err(opt.fullname + ' is already defined for ' + t.name)
-        opt.shortname !== t.shortname || err(opt.shortname + ' is already defined for ' + t.name)
-        namesrc = opt
-        ret.emb = t.all.and(opt.emb || {})
-        ret.xtr = qbstips(t.all.stip_fns).put(opt.xtr || {})
-    } else {
-        // define anonymous subtype same name with separate xtra props
-        namesrc = t
-        ret.emb = t.emb.copy()
-        ret.xtr = t.xtr.and(opt.xtr)
+// return a map of ($-prefixed) prop names to prop.name
+// $s -> stip,          $stip -> stip,         $stipulations -> stip, ...
+function dprops_map () {
+    return qbobj.map(
+        PROPS_BY_NAME,
+        function (name) { return '$' + name },
+        function (name, prop) { return prop.name }
+    )
+}
+
+// map for fast collection of name properties
+var NAME_PROPS = {
+    '$n':        1,
+    '$fn':       1,
+    '$tn':       1,
+    '$name':     1,
+    '$tinyname': 1,
+    '$fullname': 1,
+}
+
+// return a map of all names within the object ($tinyname, $fullname, $name) mapped to the name.
+function collect_names(obj) {
+    return qbobj.walk(obj, function (carry, k, i, tcode, v, path) {
+        if (tcode === TCODE.OBJ) {
+            Object.keys(v).forEach(function (vk) {
+                if (NAME_PROPS[vk]) {
+                    var name = v[vk]
+                    typeof name === 'string' || err('illegal type for ' + path.join('/') + '/' + vk + ': ' + (typeof name))
+                    !carry[name] || err('name used more than once: ' + name)
+                    carry[name] = v.$n || v.$name || err('missing name: ' + path.join('/'))    // tinyname and fullname require a normal name
+                }
+            })
+        }
+        return carry
+    }, {})
+}
+
+// Find all named types within the given type array or object (nested), collect them in an object and replace
+// them with name string references.  Return the by-name collection.
+// While traversing, update all property names to the prop.name form (from short or long forms) checking and removing the
+// '$' prefix and collect custom properties (non-dollar) into a 'form' object, preparing for type creation.
+//
+// obj_by_name({
+//     $name: 't1',
+//     $description: 'this is t1',
+//     a: 'integer',
+//     b: {
+//         $n: 't2',
+//         x: 'str',
+//         y: ['integer'],
+//         c: 'xtype'
+//     }
+// })
+// returns....
+// {
+//     $root: 't1',
+//     t1: {
+//         name: 't1',
+//         form: {
+//             a: 'integer',
+//             b: 't2'
+//         }
+//     },
+//     t2: {
+//         name: 't2',
+//         form: {
+//             x: 'str',
+//             y: ['int'],
+//             c: 'xtype'
+//         }
+//     },
+// }
+
+function obj_by_name(obj, tset, names_map) {
+    // normalize property names.  e.g. $n -> name, $type -> type...
+    var dprops = dprops_map()
+    var byname = {}                     // put named types into this map
+    var normal_name = function (n, path) {
+        return names_map[n] || (tset.get(n) && tset.get(n).name) ||
+            err('unknown type: ' + path.concat(n).join('/'))
     }
-    ret.name = namesrc.name
-    ret.shortname = namesrc.shortname
-    ret.fullname = namesrc.fullname
+    qbobj.walk(obj, function (carry, k, i, tcode, v, path, pstate, control) {
+        var parent = pstate[pstate.length-1]
+        var propkey
+        var fieldkey
+        if (k) {
+            if (k[0] === '$') {
+                propkey = dprops[k] || err('unknown property: ' + k)   // remove '$' and give normal name
+            } else {
+                fieldkey = k
+            }
+        }
+        var nv = v                              // default v for any missing case, including 'skip'
+
+        // create substitute containers for array, plain record fields, and $type values
+        if (!k || fieldkey || propkey === 'name' || propkey === 'type' || propkey === 'base') {
+            switch (tcode) {
+                case TCODE.ARR:
+                    nv = { base: 'arr', items: [] }
+                    pstate.push(nv)
+                    break
+                case TCODE.OBJ:
+                    nv = { base: 'rec' }     // assume 'record' until proven otherwise (if expression is found or is set with property, below)
+                    pstate.push(nv)
+                    var obj_name = v.$n || v.$name
+                    if (obj_name) {
+                        // replace named value with a normalized reference
+                        obj_name = normal_name(obj_name, path)
+                        byname[obj_name] = nv
+                        nv = obj_name
+                    }
+                    break
+                case TCODE.STR:
+                    // string is a type name
+                    nv = normal_name(v, path)
+                    break
+                // default: nv is v
+            }
+        } else {
+            // non-type field
+            control.walk = 'skip'
+        }
+
+        if (parent) {
+            if (propkey) {
+                // type property
+                parent[propkey] = nv
+            } else if (fieldkey) {
+                // record field or object expression
+                if (has_char(fieldkey, '*', '^')) {
+                    if (!parent.expr) {
+                        parent.base = 'obj'             // has expression key(s) - set base to 'obj'
+                        parent.expr = {}
+                    }
+                    parent.expr[fieldkey] = nv
+                } else {
+                    if (!parent.fields) {
+                        parent.fields = {}
+                    }
+                    parent.fields[fieldkey] = nv
+                }
+            } else {
+                // array value
+                parent.items[i] = nv
+            }
+        } else {
+            byname[ROOT_NAME] = nv
+        }
+    }, null)
+    return byname
+}
+
+var TYPE_DATA = [
+    // tiny,  curt,     full,       description
+    [ null,    '*',     'any',     'Represents any value or type.  For example, [*] is an array of anything' ],
+    [ 'a',   'arr',     'array',   'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]' ],
+    [ 'X',   'blb',     'blob',    'A sequence of bytes' ],
+    [ 'b',   'boo',     'boolean', 'A true or false value.  Also can be a 0 or non-zero byte' ],
+    [ 'x',   'byt',     'byte',    'An integer in range 0..255'   ],
+    [ 'd',   'dec',     'decimal', 'An unbounded base-10 number (range ~~)' ],
+    [ 'f',   'flt',     'float',   'An unbounded base-2 number (range ~~)' ],
+    [ 'i',   'int',     'integer', 'An unbounded integer (range ..)' ],
+    [ 'm',   'mul',     'multi',   'A set of possible types in the form t1|t2|t3, (also see array cycling types)'   ],
+    [ 'n',   'num',     'number',  'Any rational number including decimals, floats, and integers' ],
+    [ 'o',   'obj',     'object',  'An object with flexible keys and flexible or fixed types which may be constrained using *-expressions'  ],   //  values must be as key/value pairs and the order in the value is the only order known.
+    [ 'r',   'rec',     'record',  'An object with fixed keys and types such as { field1: str, field2: [int] }' ],   //  order is known so values can be without keys (in order) or with keys (in any order)
+    [ 's',   'str',     'string',  'A string of unicode characters (code points in range 0..1114111)'  ],   // (1-3 chained bytes, 7-21 bits)
+    [ 't',   'typ',     'type',    'When type is used as a value, it represents of of the types in this list or any referenceable or registered type'  ],
+    [ 'F',   'fal',     'false',   'False boolean value' ],
+    [ 'N',   'nul',     'null',    'A null value which represents "not-set" for most situations' ],
+    [ 'T',   'tru',     'true',    'True boolean value' ],
+]
+var TYPE_NAMES_TO_NAME = TYPE_DATA.reduce(function (m, r) {
+    var n = r[1]
+    var tn = r[0] || n, fn = r[2] || n
+    m[tn] = m[fn] = m[n] = n
+    return m
+}, {})
+
+function bootstrap_types () {
+    return TYPE_DATA.map(function (r) { return new (CTORS_BY_BASE[r[1]])({tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }) })
+}
+
+function Prop(tinyname, name, fullname, type, desc) {
+    this.name = name || err('missing property name')
+    this.tinyname = tinyname || name
+    this.fullname = fullname || name
+    this.desc = desc
+    this.type = type
+}
+Prop.prototype = {
+    constructor: Prop,
+    toString: function () { return this.name },
+}
+
+// These are the user-facing property names and descriptoins for types.  The internal Type object, above,
+// keeps a normalized version of the user-facing form for reference and adds other derived
+// properties, but keep in mind that these object properties fully describe a given object and
+// the internal properties are derived for convenience or performance.
+var PROPS =
+    [
+        // tinyname     name            fullname        type            description
+        [ 't',         'type',          null,           's|o',          'Describes the type / structure / form of the value'  ],
+        [ 'n',         'name',          null,           's',            'A concise name of a type name or property such as "int" or "arr" or "typ"' ],
+        [ 'd',         'desc',          'description',  's|N',          'A description of a type or property' ],
+        [ 'tn',        'tinyname',      null,           's|N',          'The tiny name of a name or property such as "i" or "a" which are defined only for the most common properties and types'  ],
+        [ 'fn',        'fullname',      null,           's|N',          'The full name of a type or property such as "description", "integer" or "array"'  ],
+        [ 'b',         'base',          null,           '*',            'Basic type that this type is based upon (integer, string, object, record...)'  ],
+        [ 'v',         'val',           'value',        '*',            'Value matching the type'  ],
+        [ 's',         'stip',          'stipulations', '{s:s|r}|N',    'Stipulations for write validation'  ],
+        [ null,        'items',         null,           '[t]',          'Array types'  ],
+        [ null,        'fields',        null,           '{*:t}',        'Record types'  ],
+        [ null,        'expr',         'expressions',   '{*:t}',        'Object expression types'  ],
+    ].map(function (r) { return new Prop(r[0], r[1], r[2], r[3], r[4]) } )
+
+var PROPS_BY_NAME = PROPS.reduce(function (m, p) {
+    m[p.name] = p
+    if (p.tinyname) { m[p.tinyname] = p }
+    if (p.fullname) { m[p.fullname] = p }
+    return m
+}, {})
+
+var ROOT_NAME = '$root'     // reserved name for root object (a single nameless type in the set)
+
+function Typeset(opt) {
+    opt = opt || {}
+    this.delegate = opt.delegate            // optional read-only set overshadowed by this set.
+    this.types = opt.rw ? [] : null         // all types in this set
+    this.byname = opt.rw ? {} : null        // all types in this set indexed by *all* names (tinyname, fullname, name)
+    this.overwrite = !!opt.overwrite        // true allows existing types (names) to be redefined
+    this._names = {}                        // cached sorted name lists (all names) under $name, $tinyname or $fullname
+}
+
+Typeset.prototype = {
+    constructor: Typeset,
+    _put: function (t) {
+        var name = t.name || ROOT_NAME
+        if (!this.overwrite) {
+            if (this.get(name) || (t.tinyname && this.get(t.tinyname)) || (t.fullname && this.get(t.fullname))) {
+                err('already defined: ' + Object.prototype.toString(t))
+            }
+        }
+        this.types.push(t)
+        this.byname[name] = t
+        if (t.tinyname) this.byname[t.tinyname] = t
+        if (t.fullname) this.byname[t.fullname] = t
+        this._names = {}
+    },
+    // put all named types within the given object into the typeset and return the name of the root type
+    put: function (o) {
+        this.types || err('typeset is read-only')
+        var self = this
+        // other types are in user-object form
+        var names_map = collect_names(o)
+        var o_byname = obj_by_name(o, self, names_map)        // reduce/simplify nested structure
+        var ret = ROOT_NAME
+        if (typeof o_byname[ROOT_NAME] === 'string') {
+            ret = o_byname[ROOT_NAME]
+            delete o_byname[ROOT_NAME]                        // remove extra root reference
+        }
+
+        Object.keys(o_byname).forEach(function (n) {
+            var obj = o_byname[n]
+            var base = obj.base || err('unspecified base: ' + obj)
+            obj.type == null || obj.type === 'typ' || err('object is not a type object: ' + obj.type)
+            self.get(base) || err('unknown base:' + base)
+            // check base equivalence here (instead of creating redundant type objects)?
+            var t = new (CTORS_BY_BASE[base])(obj, self)
+            self._put(t)
+        })
+        return ret
+    },
+    'get': function (n) {
+        return (this.byname && this.byname[n]) || (this.delegate && this.delegate.get(n))
+    },
+    _names_obj: function (tnf) {
+        tnf = tnf || 'name'
+        var ret = (this.delegate && this.delegate._names_obj(tnf)) || {}
+        if (this.types) {
+            for (var i=0, types=this.types, len=types.length; i<len; i++) { ret[types[i][tnf] || types[i]['name']] = 1 }
+        }
+        return ret
+    },
+    names: function (tnf) {
+        if (!this._names[tnf]) {
+            this._names[tnf] = Object.keys(this._names_obj(tnf)).sort()
+        }
+        return this._names[tnf]
+    },
+    toString: function () {
+        return '{' + this.names().join('|') + '}'
+    }
+}
+
+function err (msg) { throw Error(msg) }
+
+var TYPES = bootstrap_types()
+var TYPES_BY_NAME = TYPES.reduce(function (m, t) { m[t.tinyname] = t; m[t.name] = t; m[t.fullname] = t; return m }, {})
+var BOOTSTRAP_TYPESET = TYPES.reduce(function (tset, t) { tset._put(t); return tset }, new Typeset({rw:true, overwrite: false}))
+
+function typeset(types, opt) {
+    types = types || []
+    opt = assign({delegate: BOOTSTRAP_TYPESET, rw: true, overwrite: false}, opt)
+    var ret = new Typeset(opt)
+    types.forEach(function (t) { ret.put(t) })
     return ret
 }
 
-// common functions for all types
-function Type(opt) { init(this, opt) }
-Type.prototype = {
-    _str: function (opt) {
-        var xopt = {
-            parens: opt.xtr_paren || ['(', ')'],
-            show: opt.xtr_show || 'vals'
-        }
-        return (this[opt.name] || this.name) + (this.xtr.length ? this.xtr.toString(xopt) : '')
-    },
-    check: function (v) {
-        this.all.check(v)
-    },
-    // opt holds property settings for the new type.  if name is set, properties are combined and embedded with the name of the type,
-    // if not, properties are combined with xtra properties and will show in the cannonical name (toString())
-    subtype: function (opt) {
-        return new (this.constructor)(subtype_opt(this, opt || {}))
-    },
-    info: function () {
-        var ret = {
-            names: '[' + [this.toString({name:'fullname'}), this.toString(), this.toString({name:'shortname'})].join(', ') + ']',
-        }
-        if (this.emb.length) { ret.emb = this.emb.toString() }
-        if (this.xtr.length) { ret.xtr = this.xtr.toString() }
-        return ret
-    },
-    toString: function (opt) { return this._str(opt || {}) },
-}
+typeset.obj_by_name = obj_by_name
+typeset.has_char = has_char
 
-// example of prototype-type
-// function Int(opt) {
-//     var nopt = assign({}, opt)
-//     nopt.emb = qbstips({range: range}, {range: '1..5'})
-//     nopt.emb.put('range', '2..4', 'and')
-//     init(this, nopt)
-// }
-// Int.prototype = extend(Type.prototype, { constructor: Int })
-//
-
-function ArrayType(opt) {
-    init(this, opt)
-    this.vtype = opt.vtype || ANY
-}
-ArrayType.prototype = extend( Type.prototype, {
-    subtype: function (opt) {
-        opt = subtype_opt(this, opt)
-        // set, combine or default the item-type
-        opt.vtype = opt.vtype || (opt.vtype_opt && this.vtype.subtype(opt.vtype_opt)) || this.vtype
-        return new ArrayType(opt)
-    },
-    // [ string('[A-Z][a-z]+') ]($name: contact_list, $length: 1..30)
-    // { "$typ": "arr", "$name": "contact_list", "vt": "str32" }
-    // { "$typ": "str", "$name": "person_name", "$stip": "/[a-z]/" }
-    // { "$typ": "obj", "$name": "result", "rating": "flt", "degree": "int", "user": "person_name" }
-    // { "$typ": "result" } === "result"
-    // contact_list
-    // { $name: result, output: float, label: string }
-    _str: function (opt) {
-        var vtype = this.vtype.toString(opt)
-        var args = xtr.as_args(opt)
-        return '[' + [].concat(vtype, args).join(',') + ']'
-    },
-})
-
-function ObjectType(vt, opt) { this.vtype = vtype || ANY }
-ObjectType.prototype = {
-    name: 'obj',
-    new: function (vt) { return new ObjectType(vtype) },
-    str: function (opt) { return '{' + this.vtype.str(opt || {}) + '}' },
-    toString: function (opt) { return this.str(opt) },
-}
-
-function MultiType(types) {
-    types && types.length || err('multi type must contain at least one type')
-    this.types = types
-}
-MultiType.prototype = {
-    name: 'mul',
-    new: function (types) { return new MultiType(types) },
-    str: function (opt) { return this.types.join('|') },
-    toString: function (opt) { return this.str(opt) },
-}
-
-// Design notes:
-// typeset and multi-type are similar.  they both represent a set of types such as:
-//      string|integer|null
-//
-// typeset                                      multi-type
-//
-// types with embedded props                    types with embedded and xtra props
-// creates types, subtypes and multi-type       merges with other types to become new subtype (may have to be optimized)
-//                                              validates values
-//
-function TypeSet (types) {
-    this.by_name = types.reduce(function (m, t) {
-        var n = t.name || err('unnamed type: ' + t)
-        !m[n] || err(n + ' is already in the set')
-        m[n] = t
-        return m
-    }, {})
-    this.names = Object.keys(this.by_name).sort()
-    this.name = this.names.join('|')
-
-}
-TypeSet.prototype = {
-    new: function(opt) {
-        var t = this.by_name[name] || err('no such type: ' + name)
-        return t.clone()
-    },
-    toString: function() {
-        return '{' + this.names().join('|') + '}'
-    },
-}
-
-function err(msg) { throw Error(msg) }
-
-// var BASE_TYPES = [
-//     // name,        nam,    char    // range,        expression
-//     // [ 'blob',       'blb',  'X' ],  // null,          '*' ],
-//     [ 'boolean',    'boo',  'b' ],  // '0..1',        'true|false|tru|fal|t|f' ],
-//     // [ 'byte',       'byt',  'x' ],  // '0..255',      '[0-9a-fA-F]*' ],
-//     // [ 'decimal',    'dec',  'd' ],  // '-inf~~inf',   '[0-9]+',
-//     // [ 'float',      'flt',  'f' ],  // '-inf~~inf',    ],
-//     // [ 'integer',    'int',  'i' ],  // '-inf~~inf' ],
-//     [ 'number',     'num',  'n' ],
-//     // [ 'rational',   'rat',  'r' ],
-//     [ 'string',     'str',  's' ],
-//     // [ 'type',       'typ',  't' ],
-//     // [ 'unteger',    'unt',  'u' ],
-//
-//     // tokens (value = name)
-//     [ 'null',       'nul',  'N' ],
-//     [ 'false',      'fal',  'F' ],
-//     [ 'true',       'tru',  'T' ],
-// ].map(function (r) { return new Type(r[0], r[1], r[2])})  // no stipulations
-// var any = new Type('any', '*', '*')      // represents every type in the set
-// BASE_TYPES.push(any)
-// BASE_TYPES.push(new ArrayType(any))
-// BASE_TYPES.push(new ObjectType(any))
-// BASE_TYPES.push(new MultiType())
-
-// Create a typeset from an array or argument list
-//
-// Attempting to specify the same type twice will throw error.
-// The 'any' (*) type and general 'multiple' (mul) types are always understood by typeset and are ignored if passed
-// as arguments.  To control use of these special types , use parse, write, and/or merge options.
-//
-function typeset() {
-    // ignore any '*' and multiple 'mul' types - add these automatically to the first and last positions
-    var type_args = vargs(arguments)
-    type_args = type_args.filter(function (n) { return n !== '*' && n !== 'mul' }).sort()
-    type_args.unshift('*')
-    type_args.push('mul')
-    var types = type_args.map(function (t) { return typeof t === 'string' ? BASE.new(t).clone() : t })
-    return types.reduce(function (tset, t) { tset.put(t); return tset }, new TypeSet())
-
-    return new TypeSet(types, def_by_flag, def_by_name)
-}
-
-
-// given variable arguments, no agruments, or a single array argument, return an array of values
-function vargs (args) {
-    switch (args.length) {
-        case 0: return []
-        case 1: return Array.isArray(args[0]) ? args[0] : [args[0]]
-        default: return Array.prototype.slice.call(args)
-    }
-}
-
-// var TYPESETS = {
-//     json: function() { return typeset('num', 'str', 'arr', 'obj', 'boo', 'nul') },
-//     qb1: function() { return typeset( )} // todo: return all qb1 type names
-// }
-//
-
-// given an array or arguments object containing types, return a single type representing the combination, flattening
-// 1 level (arrays and multiple types).
-//
-// args_to_type()               ->  null
-// args_to_type( null )         ->  null
-// args_to_type( [] )           ->  null
-// args_to_type( int )          ->  int
-// args_to_type( int|str )      ->  int|str (returns SAME multi-type)
-// args_to_type( int, str )     ->  int|str
-// args_to_type( [ int, str ] ) ->  int|str
-//
-// convert multiple args or single array arg to a type, zero args to null, and single non-array as-is
-// function flatten1 (args, allow_single) {
-//     if (args.length === 0) { return null }
-//     if (args.length > 1) { return new Mul.constructor(Array.prototype.slice.apply(args).sort()) }
-//     var v = args[0]
-//     if (Array.isArray(v)) {
-//         if (v.length > 1) { return new Mul.constructor(v.sort()) }
-//         v = v[0]
-//     }
-//     v == null || allow_single || err('expected more than one argument')
-//     return v
-// }
-
-function create(fullname, name, shortname, emb) {
-    return function() {
-        var emb_fns = {}
-        var emb_stips = {}
-        Object.keys(emb).forEach(function (k) { emb_fns[k] = emb[k][0]; emb_stips[k] = emb[k][1] })
-        return new Type({
-            name: name,
-            fullname: fullname,
-            shortname: shortname,
-            emb: qbstips(emb_fns, emb_stips),
-        })
-    }
-}
-
-module.exports = {
-    // int: create(Int, 'integer', 'int', 'i')
-    int: create('integer', 'int', 'i', { range: [range, '~~'] }),
-    unt: create('unteger', 'unt', 'u', { range: [range, '0..~'] }),
-    // str: create('string', 'str', 's', { regex: [regex, '*'] }),
-    flt: create('float', 'flt', 'f', { range: [range, '~~'] } ),
-    num: create('number', 'num', 'n', { range: [range, '~~'] }),
-    boo: create('boolean', 'boo', 'b', { enum: []})
-}
-
+module.exports = typeset
