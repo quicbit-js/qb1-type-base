@@ -68,12 +68,12 @@ Type.prototype = {
     copy: function (tset) {
         return new CTORS_BY_BASE[this.base](this, tset)
     },
-    toObj: function (tnf) {
-        tnf = tnf || 'name'
+    toObj: function (opt) {
+        opt = assign({tnf: 'name'}, opt)
         if (this.isBase()) {
-            return this[tnf]
+            return this[opt.tnf]
         }
-        return copy_props(this, {}, tnf, this.tset())
+        return copy_props(this, {}, this.tset(), opt)
     },
     isBase: function () { return this.name === this.base }
 }
@@ -82,8 +82,9 @@ Type.prototype = {
 function has_props (src) {
     return !!(src.name || src.desc || src.stip)
 }
-function copy_props (src, dst, tnf, tset, opt) {
+function copy_props (src, dst, tset, opt) {
     var skip = opt && opt.skip || {}
+    var tnf = opt && opt.tnf || 'name'
     if (!skip.base) {
         dst['$' + PROPS_BY_NAME.base[tnf]] = tset.get(src.base)[tnf]
     }
@@ -118,7 +119,8 @@ function ArrType (props, tset) {
 ArrType.prototype = extend(Type.prototype, {
     base: 'arr',
     constructor: ArrType,
-    toObj: function (tnf) {
+    toObj: function (opt) {
+        opt = assign({tnf: 'name'}, opt)
         if (this.isBase()) {
             return ['*']
         }
@@ -126,9 +128,9 @@ ArrType.prototype = extend(Type.prototype, {
         var tset = this.tset()
         this.items.forEach(function (item) {
             if (typeof item === 'string') {
-                item = tset.get(item)[tnf]
+                item = tset.get(item)[opt.tnf]
             } else if (item.toObj) {
-                item = item.toObj(tnf)
+                item = item.toObj(opt)
             }
             items.push(item)
         })
@@ -136,7 +138,7 @@ ArrType.prototype = extend(Type.prototype, {
         // return a simple array if there is only one property (the base)
         var ret
         if (has_props(this)) {
-            ret = copy_props(this, {}, tnf, this.tset())
+            ret = copy_props(this, {}, this.tset(), opt)
             ret.$items = items
         } else {
             ret = items
@@ -227,11 +229,13 @@ function ObjType (props, tset) {
 ObjType.prototype = extend(Type.prototype, {
     base: 'obj',
     constructor: ObjType,
-    toObj: function (tnf) {
+    toObj: function (opt) {
+        opt = assign({tnf: 'name'}, opt)
+        opt.skip = assign(opt.skip, {base:1})
         if (has_props(this)) {
-            var ret = copy_props(this, {}, tnf, this.tset(), {skip: {base:1}})
-            ret = qbobj.map(this.fields, null, function (k,v) { return v.toObj && v.toObj(tnf) || v }, {init: ret})
-            ret = qbobj.map(this.expr, null, function (k,v) { return v.toObj && v.toObj(tnf) || v }, {init: ret})
+            var ret = copy_props(this, {}, this.tset(), opt)
+            ret = qbobj.map(this.fields, null, function (k,v) { return v.toObj && v.toObj(opt) || v }, {init: ret})
+            ret = qbobj.map(this.expr, null, function (k,v) { return v.toObj && v.toObj(opt) || v }, {init: ret})
         }
         if (typeof ret === 'object' ) {
         }
@@ -247,10 +251,12 @@ function RecType (props, tset) {
 RecType.prototype = extend(Type.prototype, {
     base: 'rec',
     constructor: RecType,
-    toObj: function (tnf) {
-        var ret = copy_props(this, {}, tnf, this.tset(), {skip: {base:1}})
+    toObj: function (opt) {
+        opt = assign({tnf: 'name'}, opt)
+        opt.skip = assign(opt.skip, {base:1})
+        var ret = copy_props(this, {}, this.tset(), opt)
         if (typeof ret === 'object') {
-            ret = qbobj.map(this.fields, null, function (k,v) { return v.toObj && v.toObj(tnf) || v }, {init: ret})
+            ret = qbobj.map(this.fields, null, function (k,v) { return v.toObj && v.toObj(opt) || v }, {init: ret})
         }
         return ret
     }
