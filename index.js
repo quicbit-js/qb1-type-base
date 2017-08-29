@@ -168,11 +168,12 @@ function set_prop (n, v, dst, opt) {
     }
 }
 
-function create_type (obj, tset) {
-    obj.base && tset.get(obj.base) || err('illegal base type: ' + obj.base)
+function create_type (obj) {
+    var base = obj.base || obj.name
+    var ctor = CTORS_BY_BASE[base] || err('unknown base type: ' + base)
     obj.type == null || obj.type === 'typ' || err('object is not a type object: ' + obj.type)
     // use flyweight objects here?
-    return new (CTORS_BY_BASE[obj.base])(obj)
+    return new (ctor)(obj)
 }
 
 // convert an object to a set of types by name using the given tset to interpret types.  return the root object and types by name as an object:
@@ -596,7 +597,7 @@ Typeset.prototype = {
 
 function err (msg) { throw Error(msg) }
 
-var TYPES = TYPE_DATA.map(function (r) { return new (CTORS_BY_BASE[r[1]])({tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }) })
+var TYPES = TYPE_DATA.map(function (r) { return create_type({tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }) })
 var BOOTSTRAP_TYPESET = new Typeset({rw:true, overwrite: false})
 TYPES.forEach(function (t) { BOOTSTRAP_TYPESET._put(t) })
 
