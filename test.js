@@ -53,14 +53,14 @@ test('obj_by_name', function (t) {
             { $n: 'xt', $d: 'an example type', $base: 'i' },
             [],
             { xt: 'xtype' },
-            { $root: 'xtype', xtype: { base: 'int', name: 'xtype', desc: 'an example type' } }
+            { root: 'xtype', byname: { xtype: { base: 'int', name: 'xtype', desc: 'an example type' } } }
         ],
         [
             // unnamed object
             { a: 'int', b: {x: 'string', y: ['int'] } },
             [],
             {},
-            { $root: { base: 'rec', fields: { a: 'int', b: { base: 'rec', fields: { x: 'str', y: { base: 'arr', items: ['int'] } } } } } }
+            { root: { base: 'rec', fields: { a: 'int', b: { base: 'rec', fields: { x: 'str', y: { base: 'arr', items: ['int'] } } } } }, byname: {} }
         ],
         [
             {
@@ -75,21 +75,24 @@ test('obj_by_name', function (t) {
             [],
             { t1: 't1', foo: 'fooby' },
             {
-                $root: 't1',
-                t1: {
-                    base: 'rec',
-                    name: 't1', desc: 'a test type',
-                    fields: {
-                        a: 'int',
-                        b: {
-                            base: 'rec',
-                            fields: {
-                                x:'str',
-                                y: { base: 'arr', items: ['int'] } }
-                        },
-                        c: 'fooby'
+                root: 't1',
+                byname: {
+                    t1: {
+                        base: 'rec',
+                        name: 't1', desc: 'a test type',
+                        fields: {
+                            a: 'int',
+                            b: {
+                                base: 'rec',
+                                fields: {
+                                    x: 'str',
+                                    y: {base: 'arr', items: ['int']}
+                                }
+                            },
+                            c: 'fooby'
+                        }
                     }
-                },
+                }
             }
         ],
         [
@@ -106,24 +109,27 @@ test('obj_by_name', function (t) {
             [],
             { t1: 't1', x: 'x' },
             {
-                $root: 't1',
-                t1:    {
-                    name: 't1',
-                    base: 'rec',
-                    fields: {
-                        a: 'int',
-                        b: {
-                            base: 'rec',
-                            fields: {
-                                x:'str',
-                                y: {
-                                    base: 'arr',
-                                    items: ['int']
+                root: 't1',
+                byname: {
+                    t1:    {
+                        name: 't1',
+                        base: 'rec',
+                        fields: {
+                            a: 'int',
+                            b: {
+                                base: 'rec',
+                                fields: {
+                                    x:'str',
+                                    y: {
+                                        base: 'arr',
+                                        items: ['int']
+                                    }
                                 }
                             }
-                        }
+                        },
+                        stip: { $n: 'x', string: 'int' }
                     },
-                    stip: { $n: 'x', string: 'int' } },
+                }
             }
         ],
         [
@@ -141,26 +147,28 @@ test('obj_by_name', function (t) {
             [],
             { xt: 'xtype', t1: 't1', t2: 't2' },
             {
-                $root: 't1',
-                t1: {
-                    name: 't1',
-                    base: 'rec',
-                    fields: {
-                        a: 'int',
-                        b: 't2' }
-                },
-                t2: {
-                    name: 't2',
-                    base: 'rec',
-                    fields: {
-                        x: 'str',
-                        y: {
-                            base: 'arr',
-                            items: [ 'int' ]
-                        },
-                        c: 'xtype'
+                root: 't1',
+                byname: {
+                    t1: {
+                        name: 't1',
+                        base: 'rec',
+                        fields: {
+                            a: 'int',
+                            b: 't2' }
+                    },
+                    t2: {
+                        name: 't2',
+                        base: 'rec',
+                        fields: {
+                            x: 'str',
+                            y: {
+                                base: 'arr',
+                                items: [ 'int' ]
+                            },
+                            c: 'xtype'
+                        }
                     }
-                },
+                }
             }
         ]
     ], function (obj, tset, names_map) { return typeset.obj_by_name(obj, typeset(tset), names_map) } )

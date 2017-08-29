@@ -168,25 +168,23 @@ function set_prop (n, v, dst, opt) {
     }
 }
 
+function create_type (obj, tset) {
+    obj.base && tset.get(obj.base) || err('illegal base type: ' + obj.base)
+    obj.type == null || obj.type === 'typ' || err('object is not a type object: ' + obj.type)
+    // use flyweight objects here?
+    return new (CTORS_BY_BASE[obj.base])(obj)
+}
+
 // convert an object to a set of types by name using the given tset to interpret types.  return the root object and types by name as an object:
 // { root: ..., byname: types-by-name }
 function obj_to_typ (o, tset) {
     // other types are in user-object form
     var names_map = collect_names(o)
-    var byname = obj_by_name(o, tset, names_map)        // reduce/simplify nested structure
-    var ret = { root: ROOT_NAME }
-    if (typeof byname[ROOT_NAME] === 'string') {
-        ret.root = byname[ROOT_NAME]
-        delete byname[ROOT_NAME]                        // remove extra root reference
-    }
+    var ret = obj_by_name(o, tset, names_map)        // reduce/simplify nested structure
 
-    ret.byname = qbobj.map(byname, null, function (n, obj) {
-        var base = obj.base || err('unspecified base: ' + obj)
-        obj.type == null || obj.type === 'typ' || err('object is not a type object: ' + obj.type)
-        tset.get(base) || err('unknown base:' + base)
-        // check base equivalence here (instead of creating redundant type objects)?
-        return new (CTORS_BY_BASE[base])(obj)
-    })
+    ret.byname = qbobj.map(ret.byname, null, function (n, obj) { return create_type(obj, tset) })
+    if (ret.root.base) { ret.root = create_type(ret.root, tset) }
+
     return ret
 }
 
@@ -405,45 +403,20 @@ function collect_names(obj) {
 }
 
 // Find all named types within the given type array or object (nested), collect them in an object and replace
-// them with name string references.  Return the by-name collection.
-// While traversing, update all property names to the prop.name form (from short or long forms) checking and removing the
-// '$' prefix and collect custom properties (non-dollar) into a 'form' object, preparing for type creation.
+// them with name string references.  return:
 //
-// obj_by_name({
-//     $name: 't1',
-//     $description: 'this is t1',
-//     a: 'integer',
-//     b: {
-//         $n: 't2',
-//         x: 'str',
-//         y: ['integer'],
-//         c: 'xtype'
-//     }
-// })
-// returns....
-// {
-//     $root: 't1',
-//     t1: {
-//         name: 't1',
-//         form: {
-//             a: 'integer',
-//             b: 't2'
-//         }
-//     },
-//     t2: {
-//         name: 't2',
-//         form: {
-//             x: 'str',
-//             y: ['int'],
-//             c: 'xtype'
-//         }
-//     },
-// }
-
+//      {
+//          root:       the root object reference or object itself (if unnamed)
+//          byname:     named objects by name
+//      }
+//
+// While traversing, update all property names to the prop.name (from tiny or long forms) checking and removing the
+// '$' prefix and collect custom properties (non-dollar) into 'fields' and 'expr' objects, preparing for type creation.
+// see tests for output examples.
 function obj_by_name(obj, tset, names_map) {
     // normalize property names.  e.g. $n -> name, $type -> type...
     var dprops = dprops_map()
-    var byname = {}                     // put named types into this map
+    var ret = { root: null, byname: {} }                     // put root object and named types into this result
     var normal_name = function (n, path) {
         return names_map[n] || (tset.get(n) && tset.get(n).name) ||
             err('unknown type: ' + path.concat(n).join('/'))
@@ -475,7 +448,7 @@ function obj_by_name(obj, tset, names_map) {
                     if (obj_name) {
                         // replace named value with a normalized reference
                         obj_name = normal_name(obj_name, path)
-                        byname[obj_name] = nv
+                        ret.byname[obj_name] = nv
                         nv = obj_name
                     }
                     break
@@ -513,10 +486,10 @@ function obj_by_name(obj, tset, names_map) {
                 parent.items[i] = nv
             }
         } else {
-            byname[ROOT_NAME] = nv
+            ret.root = nv       // nv is a string for named root, object for unnamed root
         }
     }, null)
-    return byname
+    return ret
 }
 
 function Prop(tinyname, name, fullname, type, desc) {
@@ -592,7 +565,12 @@ Typeset.prototype = {
         Object.keys(type_info.byname).forEach(function (n) {
             self._put(type_info.byname[n])
         })
-        return type_info.root
+        var root = type_info.root
+        if (typeof root !== 'string') {
+            self._put(root, ROOT_NAME)
+            root = ROOT_NAME
+        }
+        return root
     },
     'get': function (n) {
         return (this.byname && this.byname[n]) || (this.delegate && this.delegate.get(n))
