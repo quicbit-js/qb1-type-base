@@ -19,6 +19,28 @@ var extend = require('qb-extend-flat')
 var qbobj = require('qb1-obj')
 var TCODE = qbobj.TCODE
 
+var TYPE_DATA = [
+    // tiny,  curt,     full,       description
+    [ null,  '*',       'any',     'Represents any value or type.  For example, [*] is an array of anything' ],
+    [ 'a',   'arr',     'array',   'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]' ],
+    [ 'X',   'blb',     'blob',    'A sequence of bytes' ],
+    [ 'b',   'boo',     'boolean', 'A true or false value.  Also can be a 0 or non-zero byte' ],
+    [ 'x',   'byt',     'byte',    'An integer in range 0..255'   ],
+    [ 'd',   'dec',     'decimal', 'An unbounded base-10 number (range ~~)' ],
+    [ 'f',   'flt',     'float',   'An unbounded base-2 number (range ~~)' ],
+    [ 'i',   'int',     'integer', 'An unbounded integer (range ..)' ],
+    [ 'm',   'mul',     'multi',   'A set of possible types in the form t1|t2|t3, (also see array cycling types)'   ],
+    [ 'n',   'num',     'number',  'Any rational number including decimals, floats, and integers' ],
+    [ 'o',   'obj',     'object',  'An object with flexible keys and flexible or fixed types which may be constrained using *-expressions'  ],   //  values must be as key/value pairs and the order in the value is the only order known.
+    [ 'r',   'rec',     'record',  'An object with fixed keys and types such as { field1: str, field2: [int] }' ],   //  order is known so values can be without keys (in order) or with keys (in any order)
+    [ 's',   'str',     'string',  'A string of unicode characters (code points in range 0..1114111)'  ],   // (1-3 chained bytes, 7-21 bits)
+    [ 't',   'typ',     'type',    'When type is used as a value, it represents of of the types in this list or any referenceable or registered type'  ],
+    [ 'F',   'fal',     'false',   'False boolean value' ],
+    [ 'N',   'nul',     'null',    'A null value which represents "not-set" for most situations' ],
+    [ 'T',   'tru',     'true',    'True boolean value' ],
+]
+var CODES = TYPE_DATA.reduce(function (m, r) { m[r[1]] = (r[0] || r[1]).charCodeAt(0); return m }, {})
+
 // qb1 core/bootstrap types.  all types are extensions or assemblies of these core types.
 // Each built-in type has the form:
 //
@@ -58,20 +80,11 @@ function Type (props) {
     this.stip = props.stip || null
 }
 Type.prototype = {
+    code: -1,
     base: null,
     type: 'type',
     constructor: Type,
     toString: function () { return this.name },
-    toObj: function (tset, opt) {
-        opt = opt || {}
-        if (this.isBase()) {
-            return this[opt.tnf || 'name']
-        }
-        var ret = {}
-        set_prop('base', typ_to_obj(this.base, tset, opt), ret, opt)
-        copy_props(this, ret, opt)
-        return ret
-    },
     isBase: function () { return this.name === this.base }
 }
 
@@ -96,15 +109,53 @@ function typ_to_obj (v, tset, opt) {
     if (v == null) {
         return null
     }
-    if (typeof v === 'string') {
-        if (opt.tnf && opt.tnf !== 'name')  {
-            var type = tset.get(v)
-            v = type && type[opt.tnf] || v
-        }
-    } else if (v.toObj) {
-        v = v.toObj(tset, opt)
+    var ret = v
+    switch (v.code) {
+        case CODES.arr:
+            opt = opt || {}
+            if (v.isBase()) {
+                return ['*']
+            }
+            var items = v.items.map(function (item) { return typ_to_obj(item, tset, opt)})
+
+            // return a simple array if there is only one property (the base)
+            if (has_props(v)) {
+                ret = {}
+                set_prop('base', typ_to_obj(v.base, tset, opt), ret, opt)
+                copy_props(v, ret, opt)
+                ret.$items = items
+            } else {
+                ret = items
+            }
+            break
+        case CODES.obj: case CODES.rec:
+            ret = copy_props(v, {}, opt)
+            ret = qbobj.map(v.fields, null, function (k,v) { return v.toObj && v.toObj(tset, opt) || v }, {init: ret})
+            if (v.code === CODES.obj) {
+                ret = qbobj.map(v.expr, null, function (k,v) { return v.toObj && v.toObj(tset, opt) || v }, {init: ret})
+            }
+            break
+
+        // strings (type references)
+        case undefined:
+            typeof v === 'string' || err('unexpected value: ' + (typeof (v)))
+            if (opt.tnf && opt.tnf !== 'name')  {
+                var type = tset.get(v)
+                ret = type && type[opt.tnf] || v
+            }
+            break
+        // other types
+        default:
+            opt = opt || {}
+            if (v.isBase()) {
+                ret = v[opt.tnf || 'name']
+            } else {
+                ret = {}
+                set_prop('base', typ_to_obj(v.base, tset, opt), ret, opt)
+                copy_props(v, ret, opt)
+            }
     }
-    return v
+    return ret
 }
 
 // sets $-property according to the opt.skip and opt.tnf settings
@@ -156,25 +207,6 @@ function ArrType (props) {
 ArrType.prototype = extend(Type.prototype, {
     base: 'arr',
     constructor: ArrType,
-    toObj: function (tset, opt) {
-        opt = opt || {}
-        if (this.isBase()) {
-            return ['*']
-        }
-        var items = this.items.map(function (item) { return typ_to_obj(item, tset, opt)})
-
-        // return a simple array if there is only one property (the base)
-        var ret
-        if (has_props(this)) {
-            ret = {}
-            set_prop('base', typ_to_obj(this.base, tset, opt), ret, opt)
-            copy_props(this, ret, opt)
-            ret.$items = items
-        } else {
-            ret = items
-        }
-        return ret
-    }
 })
 
 // Blob
@@ -259,13 +291,6 @@ function ObjType (props) {
 ObjType.prototype = extend(Type.prototype, {
     base: 'obj',
     constructor: ObjType,
-    toObj: function (tset, opt) {
-        opt = opt || {}
-        var ret = copy_props(this, {}, opt)
-        ret = qbobj.map(this.fields, null, function (k,v) { return v.toObj && v.toObj(tset, opt) || v }, {init: ret})
-        ret = qbobj.map(this.expr, null, function (k,v) { return v.toObj && v.toObj(tset, opt) || v }, {init: ret})
-        return ret
-    }
 })
 
 // Record
@@ -276,14 +301,6 @@ function RecType (props) {
 RecType.prototype = extend(Type.prototype, {
     base: 'rec',
     constructor: RecType,
-    toObj: function (tset, opt) {
-        opt = opt || {}
-        var ret = copy_props(this, {}, opt)
-        if (typeof ret === 'object') {
-            ret = qbobj.map(this.fields, null, function (k,v) { return v.toObj && v.toObj(tset, opt) || v }, {init: ret})
-        }
-        return ret
-    }
 })
 
 // String
@@ -332,8 +349,10 @@ NulType.prototype = extend(Type.prototype, {
 })
 
 var CTORS = [ AnyType, ArrType, BooType, BlbType, BytType, DecType, FltType, MulType, IntType, NumType, ObjType, RecType, StrType, TypType, FalType, TruType, NulType ]
+CTORS.forEach(function (ctor) { ctor.prototype.code = CODES[ctor.prototype.base] })     // assign integer codes
 
 var CTORS_BY_BASE = CTORS.reduce(function (m, ctor) { m[ctor.prototype.base] = ctor; return m }, {})
+
 
 // return true if string s has character c and is not preceded by an odd number of consecutive escapes e)
 function has_char (s, c, e) {
@@ -500,33 +519,6 @@ function obj_by_name(obj, tset, names_map) {
     return byname
 }
 
-var TYPE_DATA = [
-    // tiny,  curt,     full,       description
-    [ null,    '*',     'any',     'Represents any value or type.  For example, [*] is an array of anything' ],
-    [ 'a',   'arr',     'array',   'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]' ],
-    [ 'X',   'blb',     'blob',    'A sequence of bytes' ],
-    [ 'b',   'boo',     'boolean', 'A true or false value.  Also can be a 0 or non-zero byte' ],
-    [ 'x',   'byt',     'byte',    'An integer in range 0..255'   ],
-    [ 'd',   'dec',     'decimal', 'An unbounded base-10 number (range ~~)' ],
-    [ 'f',   'flt',     'float',   'An unbounded base-2 number (range ~~)' ],
-    [ 'i',   'int',     'integer', 'An unbounded integer (range ..)' ],
-    [ 'm',   'mul',     'multi',   'A set of possible types in the form t1|t2|t3, (also see array cycling types)'   ],
-    [ 'n',   'num',     'number',  'Any rational number including decimals, floats, and integers' ],
-    [ 'o',   'obj',     'object',  'An object with flexible keys and flexible or fixed types which may be constrained using *-expressions'  ],   //  values must be as key/value pairs and the order in the value is the only order known.
-    [ 'r',   'rec',     'record',  'An object with fixed keys and types such as { field1: str, field2: [int] }' ],   //  order is known so values can be without keys (in order) or with keys (in any order)
-    [ 's',   'str',     'string',  'A string of unicode characters (code points in range 0..1114111)'  ],   // (1-3 chained bytes, 7-21 bits)
-    [ 't',   'typ',     'type',    'When type is used as a value, it represents of of the types in this list or any referenceable or registered type'  ],
-    [ 'F',   'fal',     'false',   'False boolean value' ],
-    [ 'N',   'nul',     'null',    'A null value which represents "not-set" for most situations' ],
-    [ 'T',   'tru',     'true',    'True boolean value' ],
-]
-var TYPE_NAMES_TO_NAME = TYPE_DATA.reduce(function (m, r) {
-    var n = r[1]
-    var tn = r[0] || n, fn = r[2] || n
-    m[tn] = m[fn] = m[n] = n
-    return m
-}, {})
-
 function Prop(tinyname, name, fullname, type, desc) {
     this.name = name || err('missing property name')
     this.tinyname = tinyname || name
@@ -639,6 +631,9 @@ function typeset(types, opt) {
 }
 
 typeset.obj_by_name = obj_by_name
+typeset.typ_to_obj = typ_to_obj
+typeset.obj_to_typ = obj_to_typ
+
 typeset.has_char = has_char
 
 module.exports = typeset

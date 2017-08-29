@@ -194,7 +194,7 @@ test('put', function (t) {
     ], function (obj) {
         var ts = typeset([])
         var root = ts.put(obj)
-        return [ root, ts.get(root) && ts.get(root).toObj(ts, {tnf:'tinyname'}) ]
+        return [ root, ts.get(root) && typeset.typ_to_obj(ts.get(root), ts, {tnf:'tinyname'}) ]
     })
 })
 
@@ -207,7 +207,7 @@ test('put and get obj', function (t) {
     ], function (obj, n) {
         var ts = typeset([])
         ts.put(obj)
-        return ts.get(n).toObj(ts, {tnf: 'tinyname'})
+        return typeset.typ_to_obj(ts.get(n), ts, {tnf: 'tinyname'})
     })
 })
 
