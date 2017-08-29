@@ -106,23 +106,22 @@ function copy_props (src, dst, opt) {
     return dst
 }
 
-function typ_to_obj (v, tset, opt) {
+function _typ_to_obj (v, typ_transform, opt) {
     if (v == null) {
         return null
     }
     var ret = v
     switch (v.code) {
         case CODES.arr:
-            opt = opt || {}
             if (v.isBase()) {
                 return ['*']
             }
-            var items = v.items.map(function (item) { return typ_to_obj(item, tset, opt)})
+            var items = v.items.map(function (item) { return _typ_to_obj(item, typ_transform, opt)})
 
             // return a simple array if there is only one property (the base)
             if (has_props(v)) {
                 ret = {}
-                set_prop('base', typ_to_obj(v.base, tset, opt), ret, opt)
+                set_prop('base', _typ_to_obj(v.base, typ_transform, opt), ret, opt)
                 copy_props(v, ret, opt)
                 ret.$items = items
             } else {
@@ -131,29 +130,24 @@ function typ_to_obj (v, tset, opt) {
             break
         case CODES.obj: case CODES.rec:
             ret = copy_props(v, {}, opt)
-            ret = qbobj.map(v.fields, null, function (k,v) { return v.toObj && v.toObj(tset, opt) || v }, {init: ret})
+            ret = qbobj.map(v.fields, null, function (k,v) { return _typ_to_obj(v, typ_transform, opt) }, {init: ret})
             if (v.code === CODES.obj) {
-                ret = qbobj.map(v.expr, null, function (k,v) { return v.toObj && v.toObj(tset, opt) || v }, {init: ret})
+                ret = qbobj.map(v.expr, null, function (k,v) { return _typ_to_obj(v, typ_transform, opt) }, {init: ret})
             }
             break
 
-        // strings (type references)
-        case undefined:
-            typeof v === 'string' || err('unexpected value: ' + (typeof (v)))
-            if (opt.tnf && opt.tnf !== 'name')  {
-                var type = tset.get(v)
-                ret = type && type[opt.tnf] || v
-            }
-            break
-        // other types
         default:
-            opt = opt || {}
-            if (v.isBase()) {
-                ret = v[opt.tnf || 'name']
+            if (typeof v === 'string') {
+                ret = typ_transform(v, opt) || err('unknown type: ' + v)
             } else {
-                ret = {}
-                set_prop('base', typ_to_obj(v.base, tset, opt), ret, opt)
-                copy_props(v, ret, opt)
+                typeof v.code === 'number' || err('unexpected value: ' + v)
+                if (v.isBase()) {
+                    ret = v[opt.tnf]
+                } else {
+                    ret = {}
+                    set_prop('base', _typ_to_obj(v.base, typ_transform, opt), ret, opt)
+                    copy_props(v, ret, opt)
+                }
             }
     }
     return ret
@@ -542,7 +536,7 @@ var TYPES_BY_NAME = TYPES.reduce(function (m, t) { m[t.name] = t; return m }, {}
 var typebase = {}
 typebase.names = function (tnf) { return TYPES.map(function (t) { return t[tnf || 'name'] }).sort() }
 typebase.obj_by_name = obj_by_name
-typebase.typ_to_obj = typ_to_obj
+typebase.typ_to_obj = function( v, typ_transform, opt ) { return _typ_to_obj(v, typ_transform, assign({ tnf: 'name' }, opt)) }
 typebase.obj_to_typ = obj_to_typ
 typebase.has_char = has_char
 typebase.create = function (obj) {
