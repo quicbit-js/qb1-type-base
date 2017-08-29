@@ -40,6 +40,7 @@ var TYPE_DATA = [
     [ 'T',   'tru',     'true',    'True boolean value' ],
 ]
 var CODES = TYPE_DATA.reduce(function (m, r) { m[r[1]] = (r[0] || r[1]).charCodeAt(0); return m }, {})
+var TYPE_DATA_BYNAME = TYPE_DATA.reduce(function (m, r) { m[r[1]] = r; return m })
 
 // qb1 core/bootstrap types.  all types are extensions or assemblies of these core types.
 // Each built-in type has the form:
@@ -82,7 +83,7 @@ function Type (props) {
 Type.prototype = {
     code: -1,
     base: null,
-    type: 'type',
+    type: 'typ',
     constructor: Type,
     toString: function () { return this.name },
     isBase: function () { return this.name === this.base }
@@ -532,87 +533,22 @@ var PROPS_BY_NAME = PROPS.reduce(function (m, p) {
     return m
 }, {})
 
-var ROOT_NAME = '$root'     // reserved name for root object (a single nameless type in the set)
-
-function Typeset(opt) {
-    opt = opt || {}
-    this.delegate = opt.delegate            // optional read-only set overshadowed by this set.
-    this.types = opt.rw ? [] : null         // all types in this set
-    this.byname = opt.rw ? {} : null        // all types in this set indexed by *all* names (tinyname, fullname, name)
-    this.overwrite = !!opt.overwrite        // true allows existing types (names) to be redefined
-    this._names = {}                        // cached sorted name lists (all names) under $name, $tinyname or $fullname
-}
-
-Typeset.prototype = {
-    constructor: Typeset,
-    _put: function (t) {
-        var name = t.name || ROOT_NAME
-        if (!this.overwrite) {
-            if (this.get(name) || (t.tinyname && this.get(t.tinyname)) || (t.fullname && this.get(t.fullname))) {
-                err('already defined: ' + Object.prototype.toString(t))
-            }
-        }
-        this.types.push(t)
-        this.byname[name] = t
-        if (t.tinyname) this.byname[t.tinyname] = t
-        if (t.fullname) this.byname[t.fullname] = t
-        this._names = {}
-    },
-    // put all named types within the given object into the typeset and return the name of the root type
-    put: function (o) {
-        this.types || err('typeset is read-only')
-        var type_info = obj_to_typ(o, this)
-        var self = this
-        Object.keys(type_info.byname).forEach(function (n) {
-            self._put(type_info.byname[n])
-        })
-        var root = type_info.root
-        if (typeof root !== 'string') {
-            self._put(root, ROOT_NAME)
-            root = ROOT_NAME
-        }
-        return root
-    },
-    'get': function (n) {
-        return (this.byname && this.byname[n]) || (this.delegate && this.delegate.get(n))
-    },
-    _names_obj: function (tnf) {
-        tnf = tnf || 'name'
-        var ret = (this.delegate && this.delegate._names_obj(tnf)) || {}
-        if (this.types) {
-            for (var i=0, types=this.types, len=types.length; i<len; i++) { ret[types[i][tnf] || types[i]['name']] = 1 }
-        }
-        return ret
-    },
-    names: function (tnf) {
-        if (!this._names[tnf]) {
-            this._names[tnf] = Object.keys(this._names_obj(tnf)).sort()
-        }
-        return this._names[tnf]
-    },
-    toString: function () {
-        return '{' + this.names().join('|') + '}'
-    }
-}
-
 function err (msg) { throw Error(msg) }
 
 var TYPES = TYPE_DATA.map(function (r) { return create_type({tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }) })
-var BOOTSTRAP_TYPESET = new Typeset({rw:true, overwrite: false})
-TYPES.forEach(function (t) { BOOTSTRAP_TYPESET._put(t) })
+var TYPES_BY_NAME = TYPES.reduce(function (m, t) { m[t.name] = t; return m }, {})
 
-function typeset(types, opt) {
-    types = types || []
-    opt = assign({delegate: BOOTSTRAP_TYPESET, rw: true, overwrite: false}, opt)
-    var ret = new Typeset(opt)
-    types.forEach(function (t) { ret.put(t) })
-    return ret
+var typebase = {}
+typebase.names = function (tnf) { return TYPES.map(function (t) { return t[tnf || 'name'] }).sort() }
+typebase.obj_by_name = obj_by_name
+typebase.typ_to_obj = typ_to_obj
+typebase.obj_to_typ = obj_to_typ
+typebase.has_char = has_char
+typebase.create = function (obj) {
+    if (typeof obj === 'string') {
+        obj = TYPES_BY_NAME[obj] || err('unknown type: ' + obj)
+    }
+    return create_type(obj)
 }
 
-typeset.obj_by_name = obj_by_name
-typeset.typ_to_obj = typ_to_obj
-typeset.obj_to_typ = obj_to_typ
-
-typeset.has_char = has_char
-
-module.exports = typeset
+module.exports = typebase

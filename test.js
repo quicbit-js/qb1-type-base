@@ -15,17 +15,16 @@
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 var test = require('test-kit').tape()
-var typeset = require('.')
+var tbase = require('.')
 
 test('names', function (t) {
-    var ts = typeset([])
     t.table_assert([
         [ 'tnf',            'exp' ],
         [ 'tinyname',       [ '*', 'F', 'N', 'T', 'X', 'a', 'b', 'd', 'f', 'i', 'm', 'n', 'o', 'r', 's', 't', 'x' ] ],
         [ 'tinyname',       [ '*', 'F', 'N', 'T', 'X', 'a', 'b', 'd', 'f', 'i', 'm', 'n', 'o', 'r', 's', 't', 'x' ] ],
         [ 'name',           [ '*', 'arr', 'blb', 'boo', 'byt', 'dec', 'fal', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'rec', 'str', 'tru', 'typ' ] ],
         [ 'fullname',       [ 'any', 'array', 'blob', 'boolean', 'byte', 'decimal', 'false', 'float', 'integer', 'multi', 'null', 'number', 'object', 'record', 'string', 'true', 'type' ] ],
-    ], function(tnf) { return ts.names(tnf) })
+    ], function(tnf) { return tbase.names(tnf) })
 })
 
 test('has_char', function (t) {
@@ -38,8 +37,11 @@ test('has_char', function (t) {
         [ 'ab^c',       'c',      '^',       false ],
         [ 'ab^^c',      'c',      '^',       true ],
         [ 'ab^^^c',     'c',      '^',       false ],
-    ], typeset.has_char)
+    ], tbase.has_char)
 })
+
+/*
+need to change reliance on tset to strategy fn.
 
 test('obj_by_name', function (t) {
     t.table_assert([
@@ -171,12 +173,12 @@ test('obj_by_name', function (t) {
                 }
             }
         ]
-    ], function (obj, tset, names_map) { return typeset.obj_by_name(obj, typeset(tset), names_map) } )
+    ], function (obj, tset, names_map) { return tbase.obj_by_name(obj, tbase(tset), names_map) } )
 })
-
-
+*/
+/*
 test('get', function (t) {
-    var ts = typeset([])
+    var ts = tbase([])
     t.table_assert([
         [ 'n',              'exp'  ],
         [ undefined,        undefined ],
@@ -200,9 +202,9 @@ test('put', function (t) {
         [ { $name: 'my_b', $desc: 'type b' },       [ 'my_b',    { $n: 'my_b', $d: 'type b' } ] ],
         [ { $name: 'strobj', '*_str': 'string' },   [ 'strobj',  { $n: 'strobj', '*_str': 'str' } ] ],
     ], function (obj) {
-        var ts = typeset([])
+        var ts = tbase([])
         var root = ts.put(obj)
-        return [ root, ts.get(root) && typeset.typ_to_obj(ts.get(root), ts, {tnf:'tinyname'}) ]
+        return [ root, ts.get(root) && tbase.typ_to_obj(ts.get(root), ts, {tnf:'tinyname'}) ]
     })
 })
 
@@ -213,55 +215,9 @@ test('put and get obj', function (t) {
         [ ['type'],                                             '$root',    [ 't' ] ],
         [ { $n: 'myarr', $items: ['str'], $b:'a', $tn: 'ma' },  'ma',       { $b: 'a', $n: 'myarr', $tn: 'ma', $items: ['s'] } ],
     ], function (obj, n) {
-        var ts = typeset([])
+        var ts = tbase([])
         ts.put(obj)
-        return typeset.typ_to_obj(ts.get(n), ts, {tnf: 'tinyname'})
+        return tbase.typ_to_obj(ts.get(n), ts, {tnf: 'tinyname'})
     })
 })
-
-//
-// Data objects can be of the form:
-//
-// {
-//     $type: type,
-//     $name: string,
-//     $description: string,
-//     $stip: stip,
-//     $value: *,                   // a value that is of the specified $type and matching $stipulations
-//     plain-properties...          // object and record values can be specified as non-dollar values
-// }
-/*
- test('self-described types', function (t) {
- t.table_assert([
- [ 'obj',   'exp'  ],
- [
- {
- $type: { $type: 'type', a: 'i', b: 's' },    // the type-type '$t' is redundant - known by context.
- a: 17,
- b: 'hi'
- }
- ],
- [
- {
- $type: { a: 'i', b: 's' },                  // ... so we can just do this to describe a record
- a: 17,
- b: 'hi'
- }
- ],
- [
- {
- $type: { '*': 'i|s' },                      // ... or describe generally as an object that allows any integer or string
- a: 17,
- b: 'hi'
- }
- ],
- [
- {
- $type: { '*': '*' },                       // ... or describe generally as an object that allows any value
- a: 17,
- b: 'hi'
- }
- ],
- ])
- })
- */
+*/
