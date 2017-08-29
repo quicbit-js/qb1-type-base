@@ -37,7 +37,7 @@ test('has_char', function (t) {
         [ 'ab^c',       'c',      '^',       false ],
         [ 'ab^^c',      'c',      '^',       true ],
         [ 'ab^^^c',     'c',      '^',       false ],
-    ], tbase.has_char)
+    ], tbase._has_char)
 })
 
 test('obj_by_name', function (t) {
@@ -171,7 +171,7 @@ test('obj_by_name', function (t) {
                 return name_map[n] || n
             }
 
-            return tbase.obj_by_name(obj, name_transform)
+            return tbase._obj_by_name(obj, name_transform)
         }
     )
 })

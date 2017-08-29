@@ -40,7 +40,6 @@ var TYPE_DATA = [
     [ 'T',   'tru',     'true',    'True boolean value' ],
 ]
 var CODES = TYPE_DATA.reduce(function (m, r) { m[r[1]] = (r[0] || r[1]).charCodeAt(0); return m }, {})
-var TYPE_DATA_BYNAME = TYPE_DATA.reduce(function (m, r) { m[r[1]] = r; return m })
 
 // qb1 core/bootstrap types.  all types are extensions or assemblies of these core types.
 // Each built-in type has the form:
@@ -534,11 +533,12 @@ var TYPES = TYPE_DATA.map(function (r) { return create_type({tinyname: r[0], nam
 var TYPES_BY_NAME = TYPES.reduce(function (m, t) { m[t.name] = t; return m }, {})
 
 var typebase = {}
+typebase._obj_by_name = obj_by_name
+typebase._has_char = has_char
+
 typebase.names = function (tnf) { return TYPES.map(function (t) { return t[tnf || 'name'] }).sort() }
-typebase.obj_by_name = obj_by_name
 typebase.typ_to_obj = function( v, typ_transform, opt ) { return _typ_to_obj(v, typ_transform, assign({ tnf: 'name' }, opt)) }
 typebase.obj_to_typ = obj_to_typ
-typebase.has_char = has_char
 typebase.create = function (obj) {
     if (typeof obj === 'string') {
         obj = TYPES_BY_NAME[obj] || err('unknown type: ' + obj)
