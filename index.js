@@ -179,13 +179,17 @@ function create_type (obj) {
 
 // convert an object to a set of types by name using the given tset to interpret types.  return the root object and types by name as an object:
 // { root: ..., byname: types-by-name }
-function obj_to_typ (o, tset) {
+function obj_to_typ (o, typ_transform) {
     // other types are in user-object form
     var names_map = collect_names(o)
-    var ret = obj_by_name(o, tset, names_map)        // reduce/simplify nested structure
+    var trans = function (n, path) {
+        return names_map[n] || typ_transform(n) || err('unknown type: ' + path.concat(n).join('/'))
+    }
 
-    ret.byname = qbobj.map(ret.byname, null, function (n, obj) { return create_type(obj, tset) })
-    if (ret.root.base) { ret.root = create_type(ret.root, tset) }
+    var ret = obj_by_name(o, trans)        // reduce/simplify nested structure
+
+    ret.byname = qbobj.map(ret.byname, null, function (n, obj) { return create_type(obj) })
+    if (ret.root.base) { ret.root = create_type(ret.root) }
 
     return ret
 }
@@ -415,14 +419,11 @@ function collect_names(obj) {
 // While traversing, update all property names to the prop.name (from tiny or long forms) checking and removing the
 // '$' prefix and collect custom properties (non-dollar) into 'fields' and 'expr' objects, preparing for type creation.
 // see tests for output examples.
-function obj_by_name(obj, tset, names_map) {
+function obj_by_name(obj, typ_transform) {
+    typ_transform = typ_transform || function (n) { return n }
     // normalize property names.  e.g. $n -> name, $type -> type...
     var dprops = dprops_map()
     var ret = { root: null, byname: {} }                     // put root object and named types into this result
-    var normal_name = function (n, path) {
-        return names_map[n] || (tset.get(n) && tset.get(n).name) ||
-            err('unknown type: ' + path.concat(n).join('/'))
-    }
     qbobj.walk(obj, function (carry, k, i, tcode, v, path, pstate, control) {
         var parent = pstate[pstate.length-1]
         var propkey
@@ -449,14 +450,14 @@ function obj_by_name(obj, tset, names_map) {
                     var obj_name = v.$n || v.$name
                     if (obj_name) {
                         // replace named value with a normalized reference
-                        obj_name = normal_name(obj_name, path)
+                        obj_name = typ_transform(obj_name, path)        // todo: needed?
                         ret.byname[obj_name] = nv
                         nv = obj_name
                     }
                     break
                 case TCODE.STR:
                     // string is a type name
-                    nv = normal_name(v, path)
+                    nv = typ_transform(v, path)
                     break
                 // default: nv is v
             }

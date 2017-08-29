@@ -40,184 +40,138 @@ test('has_char', function (t) {
     ], tbase.has_char)
 })
 
-/*
-need to change reliance on tset to strategy fn.
-
 test('obj_by_name', function (t) {
-    t.table_assert([
+    t.table_assert(
         [
-            'obj',
-            'tset',
-            'names_map',
-            'exp',
-        ],
-        [
-            { $n: 'xt', $d: 'an example type', $base: 'i' },
-            [],
-            { xt: 'xtype' },
-            { root: 'xtype', byname: { xtype: { base: 'int', name: 'xtype', desc: 'an example type' } } }
-        ],
-        [
-            // unnamed object
-            { a: 'int', b: {x: 'string', y: ['int'] } },
-            [],
-            {},
-            { root: { base: 'rec', fields: { a: 'int', b: { base: 'rec', fields: { x: 'str', y: { base: 'arr', items: ['int'] } } } } }, byname: {} }
-        ],
-        [
-            {
-                $name: 't1', $description: 'a test type',
-                a: 'int',
-                b: {
-                    x: 'str',
-                    y: ['int']
+            [
+                'obj',
+                'name_map',
+                'exp',
+            ],
+            [
+                { $n: 'xt', $d: 'an example type', $base: 'i' },
+                { xt: 'xtype', i: 'int' },
+                { root: 'xtype', byname: { xtype: { base: 'int', name: 'xtype', desc: 'an example type' } } }
+            ],
+            [
+                // unnamed object
+                { a: 'int', b: {x: 'string', y: ['int'] } },
+                { string: 'str' },
+                { root: { base: 'rec', fields: { a: 'int', b: { base: 'rec', fields: { x: 'str', y: { base: 'arr', items: ['int'] } } } } }, byname: {} }
+            ],
+            [
+                {
+                    $name: 't1', $description: 'a test type',
+                    a: 'int',
+                    b: {
+                        x: 'str',
+                        y: ['int']
+                    },
+                    c: 'foo'
                 },
-                c: 'foo'
-            },
-            [],
-            { t1: 't1', foo: 'fooby' },
-            {
-                root: 't1',
-                byname: {
-                    t1: {
-                        base: 'rec',
-                        name: 't1', desc: 'a test type',
-                        fields: {
-                            a: 'int',
-                            b: {
-                                base: 'rec',
-                                fields: {
-                                    x: 'str',
-                                    y: {base: 'arr', items: ['int']}
-                                }
-                            },
-                            c: 'fooby'
+                { t1: 't1', foo: 'fooby' },
+                {
+                    root: 't1',
+                    byname: {
+                        t1: {
+                            base: 'rec',
+                            name: 't1', desc: 'a test type',
+                            fields: {
+                                a: 'int',
+                                b: {
+                                    base: 'rec',
+                                    fields: {
+                                        x: 'str',
+                                        y: {base: 'arr', items: ['int']}
+                                    }
+                                },
+                                c: 'fooby'
+                            }
                         }
                     }
                 }
-            }
-        ],
-        [
-            // keep stipulations intact (non-type args)
-            {
-                $name: 't1',
-                a: 'int',
-                b: {
-                    x: 'str',
-                    y: ['int']
+            ],
+            [
+                // keep stipulations intact (non-type args)
+                {
+                    $name: 't1',
+                    a: 'int',
+                    b: {
+                        x: 'str',
+                        y: ['int']
+                    },
+                    $stip: { $n: 'x', string: 'int' }
                 },
-                $stip: { $n: 'x', string: 'int' }
-            },
-            [],
-            { t1: 't1', x: 'x' },
-            {
-                root: 't1',
-                byname: {
-                    t1:    {
-                        name: 't1',
-                        base: 'rec',
-                        fields: {
-                            a: 'int',
-                            b: {
-                                base: 'rec',
-                                fields: {
-                                    x:'str',
-                                    y: {
-                                        base: 'arr',
-                                        items: ['int']
+                { t1: 't1', x: 'x' },
+                {
+                    root: 't1',
+                    byname: {
+                        t1:    {
+                            name: 't1',
+                            base: 'rec',
+                            fields: {
+                                a: 'int',
+                                b: {
+                                    base: 'rec',
+                                    fields: {
+                                        x:'str',
+                                        y: {
+                                            base: 'arr',
+                                            items: ['int']
+                                        }
                                     }
                                 }
-                            }
-                        },
-                        stip: { $n: 'x', string: 'int' }
-                    },
-                }
-            }
-        ],
-        [
-            {
-                $name: 't1',
-                a: 'int',
-                b: {
-                    $name: 't2',
-                    x: 'str',
-                    y: ['int'],
-                    c: 'xt'
-                }
-            },
-            // [ { $n: 'xt', $d: 'an example type', $t: 'i' } ],  - need tset.put() to fix this
-            [],
-            { xt: 'xtype', t1: 't1', t2: 't2' },
-            {
-                root: 't1',
-                byname: {
-                    t1: {
-                        name: 't1',
-                        base: 'rec',
-                        fields: {
-                            a: 'int',
-                            b: 't2' }
-                    },
-                    t2: {
-                        name: 't2',
-                        base: 'rec',
-                        fields: {
-                            x: 'str',
-                            y: {
-                                base: 'arr',
-                                items: [ 'int' ]
                             },
-                            c: 'xtype'
+                            stip: { $n: 'x', string: 'int' }
+                        },
+                    }
+                }
+            ],
+            [
+                {
+                    $name: 't1',
+                    a: 'int',
+                    b: {
+                        $name: 't2',
+                        x: 'str',
+                        y: ['int'],
+                        c: 'xt'
+                    }
+                },
+                // [ { $n: 'xt', $d: 'an example type', $t: 'i' } ],  - need tset.put() to fix this
+                { xt: 'xtype', t1: 't1', t2: 't2' },
+                {
+                    root: 't1',
+                    byname: {
+                        t1: {
+                            name: 't1',
+                            base: 'rec',
+                            fields: {
+                                a: 'int',
+                                b: 't2' }
+                        },
+                        t2: {
+                            name: 't2',
+                            base: 'rec',
+                            fields: {
+                                x: 'str',
+                                y: {
+                                    base: 'arr',
+                                    items: [ 'int' ]
+                                },
+                                c: 'xtype'
+                            }
                         }
                     }
                 }
+            ]
+        ],
+        function (obj, name_map) {
+            var name_transform = function (n, path) {
+                return name_map[n] || n
             }
-        ]
-    ], function (obj, tset, names_map) { return tbase.obj_by_name(obj, tbase(tset), names_map) } )
-})
-*/
-/*
-test('get', function (t) {
-    var ts = tbase([])
-    t.table_assert([
-        [ 'n',              'exp'  ],
-        [ undefined,        undefined ],
-        [ 'my_a',           undefined ],
-        [ 's',              { name: 'str', desc: 'A string of unicode characters (code points in range 0..1114111)', tinyname: 's', fullname: 'string', stip: null } ],
-        [ 'str',            { name: 'str', desc: 'A string of unicode characters (code points in range 0..1114111)', tinyname: 's', fullname: 'string', stip: null } ],
-        [ 'string',         { name: 'str', desc: 'A string of unicode characters (code points in range 0..1114111)', tinyname: 's', fullname: 'string', stip: null } ],
-    ], function (n) {
-        return ts.get(n) })
-})
 
-test('put', function (t) {
-    t.table_assert([
-        [ 'n',                                      'exp'  ],
-        [ { $name: 'an_int', $base: 'int' },        [ 'an_int',  { $n: 'an_int', $b: 'i' } ] ],
-        [ ['int'],                                  [ '$root',   [ 'i' ] ] ],
-        [ ['type'],                                 [ '$root',   [ 't' ] ] ],
-        [ { $n: 'myt', $t: 'type' },                [ 'myt',     { $n: 'myt' } ] ],
-        [ { $n: 'my_arr', $items: [], $base:'a' },  [ 'my_arr',  { $b: 'a', $n: 'my_arr', $items: [] } ] ],
-        [ { $name: 'my_a' },                        [ 'my_a',    { $n: 'my_a' } ] ],
-        [ { $name: 'my_b', $desc: 'type b' },       [ 'my_b',    { $n: 'my_b', $d: 'type b' } ] ],
-        [ { $name: 'strobj', '*_str': 'string' },   [ 'strobj',  { $n: 'strobj', '*_str': 'str' } ] ],
-    ], function (obj) {
-        var ts = tbase([])
-        var root = ts.put(obj)
-        return [ root, ts.get(root) && tbase.typ_to_obj(ts.get(root), ts, {tnf:'tinyname'}) ]
-    })
+            return tbase.obj_by_name(obj, name_transform)
+        }
+    )
 })
-
-test('put and get obj', function (t) {
-    t.table_assert([
-        [ 'obj',                                                'n',        'exp', ],
-        [ { $n: 'an_int', $b: 'int', $tn: 'ai' },               'ai',       { $b: 'i', $tn: 'ai', $n: 'an_int' } ],
-        [ ['type'],                                             '$root',    [ 't' ] ],
-        [ { $n: 'myarr', $items: ['str'], $b:'a', $tn: 'ma' },  'ma',       { $b: 'a', $n: 'myarr', $tn: 'ma', $items: ['s'] } ],
-    ], function (obj, n) {
-        var ts = tbase([])
-        ts.put(obj)
-        return tbase.typ_to_obj(ts.get(n), ts, {tnf: 'tinyname'})
-    })
-})
-*/
