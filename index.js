@@ -44,8 +44,6 @@ var TCODE = qbobj.TCODE
 // actually 'object' types with the stipulation that keys start with a letter and may not contain '*'.
 //
 function Type (props) {
-
-    // props
     this.name = props.name
     this.desc = props.desc
     if (props.name) {
@@ -70,7 +68,7 @@ Type.prototype = {
             return this[opt.tnf || 'name']
         }
         var ret = {}
-        set_prop('base', to_obj(this.base, tset, opt), ret, opt)
+        set_prop('base', typ_to_obj(this.base, tset, opt), ret, opt)
         copy_props(this, ret, opt)
         return ret
     },
@@ -94,7 +92,7 @@ function copy_props (src, dst, opt) {
     return dst
 }
 
-function to_obj (v, tset, opt) {
+function typ_to_obj (v, tset, opt) {
     if (v == null) {
         return null
     }
@@ -119,6 +117,28 @@ function set_prop (n, v, dst, opt) {
     }
 }
 
+// convert an object to a set of types by name using the given tset to interpret types.  return the root object and types by name as an object:
+// { root: ..., byname: types-by-name }
+function obj_to_typ (o, tset) {
+    // other types are in user-object form
+    var names_map = collect_names(o)
+    var byname = obj_by_name(o, tset, names_map)        // reduce/simplify nested structure
+    var ret = { root: ROOT_NAME }
+    if (typeof byname[ROOT_NAME] === 'string') {
+        ret.root = byname[ROOT_NAME]
+        delete byname[ROOT_NAME]                        // remove extra root reference
+    }
+
+    ret.byname = qbobj.map(byname, null, function (n, obj) {
+        var base = obj.base || err('unspecified base: ' + obj)
+        obj.type == null || obj.type === 'typ' || err('object is not a type object: ' + obj.type)
+        tset.get(base) || err('unknown base:' + base)
+        // check base equivalence here (instead of creating redundant type objects)?
+        return new (CTORS_BY_BASE[base])(obj)
+    })
+    return ret
+}
+
 // Any
 function AnyType (props) {
     Type.call(this, props)
@@ -141,13 +161,13 @@ ArrType.prototype = extend(Type.prototype, {
         if (this.isBase()) {
             return ['*']
         }
-        var items = this.items.map(function (item) { return to_obj(item, tset, opt)})
+        var items = this.items.map(function (item) { return typ_to_obj(item, tset, opt)})
 
         // return a simple array if there is only one property (the base)
         var ret
         if (has_props(this)) {
             ret = {}
-            set_prop('base', to_obj(this.base, tset, opt), ret, opt)
+            set_prop('base', typ_to_obj(this.base, tset, opt), ret, opt)
             copy_props(this, ret, opt)
             ret.$items = items
         } else {
@@ -575,26 +595,12 @@ Typeset.prototype = {
     // put all named types within the given object into the typeset and return the name of the root type
     put: function (o) {
         this.types || err('typeset is read-only')
+        var type_info = obj_to_typ(o, this)
         var self = this
-        // other types are in user-object form
-        var names_map = collect_names(o)
-        var o_byname = obj_by_name(o, self, names_map)        // reduce/simplify nested structure
-        var ret = ROOT_NAME
-        if (typeof o_byname[ROOT_NAME] === 'string') {
-            ret = o_byname[ROOT_NAME]
-            delete o_byname[ROOT_NAME]                        // remove extra root reference
-        }
-
-        Object.keys(o_byname).forEach(function (n) {
-            var obj = o_byname[n]
-            var base = obj.base || err('unspecified base: ' + obj)
-            obj.type == null || obj.type === 'typ' || err('object is not a type object: ' + obj.type)
-            self.get(base) || err('unknown base:' + base)
-            // check base equivalence here (instead of creating redundant type objects)?
-            var t = new (CTORS_BY_BASE[base])(obj)
-            self._put(t)
+        Object.keys(type_info.byname).forEach(function (n) {
+            self._put(type_info.byname[n])
         })
-        return ret
+        return type_info.root
     },
     'get': function (n) {
         return (this.byname && this.byname[n]) || (this.delegate && this.delegate.get(n))
