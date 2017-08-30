@@ -49,17 +49,6 @@ test('create errors', function (t) {
     ], tbase.create, { assert: 'throws' })
 })
 
-
-test('isBase', function (t) {
-    t.table_assert([
-        [ 'create',                             'exp'  ],
-        [ 'str',                                true ],
-        [ {base:'str'},                         false ],
-        [ {base:'str', name: 'i'},              false ],
-    ], function (create) { return tbase.create(create).isBase() })
-})
-
-
 test('toString', function (t) {
     t.table_assert([
         [ 'create',                             'exp'  ],

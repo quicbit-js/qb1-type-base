@@ -83,18 +83,15 @@ Type.prototype = {
     type: 'typ',
     constructor: Type,
     toString: function () { return this.name || 'unnamed' },
-    isBase: function () { return this.name === this.base }
 }
 
-function create (obj) {
-    if (typeof obj === 'string') {
-        obj = TYPES_BY_NAME[obj] || err('unknown type: ' + obj)
+function create (props) {
+    if (typeof props === 'string') {
+        props = TYPES_BY_NAME[props] || err('unknown type: ' + props)
     }
-    var base = obj.base || obj.name
-    var ctor = CTORS_BY_BASE[base] || err('unknown base type: ' + base)
-    obj.type == null || obj.type === 'typ' || err('object is not a type object: ' + obj.type)
-    // use flyweight objects here?
-    return new (ctor)(obj)
+    var ctor = CTORS_BY_BASE[props.base] || err('unknown base type: ' + props.base)
+    props.type == null || props.type === 'typ' || err('object is not a type object: ' + props.type)
+    return new (ctor)(props)
 }
 
 // Any
@@ -300,7 +297,7 @@ var PROPS_BY_NAME = PROPS.reduce(function (m, p) {
 
 function err (msg) { throw Error(msg) }
 
-var TYPES = TYPE_DATA.map(function (r) { return create({tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }) })
+var TYPES = TYPE_DATA.map(function (r) { return create({base: r[1], tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }) })
 var TYPES_BY_NAME = TYPES.reduce(function (m, t) { m[t.name] = t; return m }, {})
 
 module.exports = {
