@@ -31,21 +31,21 @@ test('create', function (t) {
     t.table_assert([
         [ 'create',                                 'exp'  ],
         [ 'str',                                    { name: 'str', desc: 'A string of unicode characters (code points in range 0..1114111)', tinyname: 's', fullname: 'string', stip: null }, ],
-        [ {base:'int'},                             { name: undefined, desc: undefined, fullname: null, tinyname: null, stip: null }, ],
-        [ {base:'int', name: 'foo'},                { name: 'foo', desc: undefined, tinyname: 'foo', fullname: 'foo', stip: null }, ],
+        [ {base:'int'},                             { name: null, desc: null, fullname: null, tinyname: null, stip: null }, ],
+        [ {base:'int', name: 'foo'},                { name: 'foo', desc: null, tinyname: 'foo', fullname: 'foo', stip: null }, ],
     ], tbase.create )
 })
 
 
 test('create errors', function (t) {
     t.table_assert([
-        [ 'create',                     'exp'  ],
-        [ null,                         /Cannot read property/ ],
-        [ 'foo',                        /unknown type/ ],
-        [ {base: 'foo' },                        /unknown base/ ],
-        [ {base: 'rec', type: 'foo' },                        /not a type/ ],
-        [ {base: 'int', tinyname: 'foo' },                        /tinyname without name/ ],
-        [ {base: 'int', fullname: 'foo' },                        /fullname without name/ ],
+        [ 'create',                             'exp'  ],
+        [ null,                                 /Cannot read property/ ],
+        [ 'foo',                                /unknown type/ ],
+        [ {base: 'foo' },                       /unknown base/ ],
+        [ {base: 'rec', type: 'foo' },          /not a type/ ],
+        [ {base: 'int', tinyname: 'foo' },      /tinyname without name/ ],
+        [ {base: 'int', fullname: 'foo' },      /fullname without name/ ],
     ], tbase.create, { assert: 'throws' })
 })
 

@@ -64,11 +64,11 @@ var CODES = TYPE_DATA.reduce(function (m, r) { m[r[1]] = (r[0] || r[1]).charCode
 // actually 'object' types with the stipulation that keys start with a letter and may not contain '*'.
 //
 function Type (props) {
-    this.name = props.name
-    this.desc = props.desc
+    this.name = props.name || null
+    this.desc = props.desc || null
     if (props.name) {
-        this.tinyname = props.tinyname || props.name
-        this.fullname = props.fullname || props.name
+        this.tinyname = props.tinyname || props.name || null
+        this.fullname = props.fullname || props.name || null
     } else {
         !props.tinyname || err('tinyname without name')
         !props.fullname || err('fullname without name')
