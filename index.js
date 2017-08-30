@@ -82,11 +82,11 @@ Type.prototype = {
     base: null,
     type: 'typ',
     constructor: Type,
-    toString: function () { return this.name },
+    toString: function () { return this.name || 'unnamed' },
     isBase: function () { return this.name === this.base }
 }
 
-function create_type (obj) {
+function create (obj) {
     if (typeof obj === 'string') {
         obj = TYPES_BY_NAME[obj] || err('unknown type: ' + obj)
     }
@@ -261,7 +261,7 @@ CTORS.forEach(function (ctor) { ctor.prototype.code = CODES[ctor.prototype.base]
 var CTORS_BY_BASE = CTORS.reduce(function (m, ctor) { m[ctor.prototype.base] = ctor; return m }, {})
 
 function Prop(tinyname, name, fullname, type, desc) {
-    this.name = name || err('missing property name')
+    this.name = name
     this.tinyname = tinyname || name
     this.fullname = fullname || name
     this.desc = desc
@@ -269,7 +269,6 @@ function Prop(tinyname, name, fullname, type, desc) {
 }
 Prop.prototype = {
     constructor: Prop,
-    toString: function () { return this.name },
 }
 
 // These are the user-facing property names and descriptoins for types.  The internal Type object, above,
@@ -294,20 +293,19 @@ var PROPS =
 
 var PROPS_BY_NAME = PROPS.reduce(function (m, p) {
     m[p.name] = p
-    if (p.tinyname) { m[p.tinyname] = p }
-    if (p.fullname) { m[p.fullname] = p }
+    m[p.tinyname] = p
+    m[p.fullname] = p
     return m
 }, {})
 
 function err (msg) { throw Error(msg) }
 
-var TYPES = TYPE_DATA.map(function (r) { return create_type({tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }) })
+var TYPES = TYPE_DATA.map(function (r) { return create({tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }) })
 var TYPES_BY_NAME = TYPES.reduce(function (m, t) { m[t.name] = t; return m }, {})
 
-var typebase = {}
-typebase.names = function (tnf) { return TYPES.map(function (t) { return t[tnf || 'name'] }).sort() }
-typebase.create = create_type
-typebase.PROPS_BY_NAME = PROPS_BY_NAME
-typebase.CODES = CODES
-
-module.exports = typebase
+module.exports = {
+    names: function (tnf) { return TYPES.map(function (t) { return t[tnf || 'name'] }).sort() },
+    create: create,
+    PROPS_BY_NAME: PROPS_BY_NAME,
+    CODES: CODES
+}
