@@ -110,6 +110,7 @@ function ArrType (props) {
 ArrType.prototype = extend(Type.prototype, {
     base: 'arr',
     constructor: ArrType,
+    is_generic: function () { return this.items.length == 1 && this.items[0] === '*' }
 })
 
 // Blob
@@ -188,12 +189,24 @@ NumType.prototype = extend(Type.prototype, {
 // Object - like record, but has one or more expressions
 function ObjType (props) {
     Type.call(this, props)
-    this.expr = props.expr || {'*':'*'}
     this.fields = props.fields || {}
+    this.expr = props.expr || {}
+    // default to any-content object when no fields are given
+    if (Object.keys(this.expr).length === 0 && Object.keys(this.fields).length === 0) {
+        this.expr = {'*':'*'}
+    }
 }
 ObjType.prototype = extend(Type.prototype, {
     base: 'obj',
     constructor: ObjType,
+    // return true if fields are simply {'*':'*'}
+    is_generic: function () {
+        if (Object.keys(this.fields).length === 0) {
+            return this.expr['*'] === '*' && Object.keys(this.expr).length === 1
+        } else {
+            return false
+        }
+    }
 })
 
 // String
