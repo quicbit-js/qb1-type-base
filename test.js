@@ -20,10 +20,10 @@ var tbase = require('.')
 test('names', function (t) {
     t.table_assert([
         [ 'tnf',            'exp' ],
-        [ 'tinyname',       [ '*', 'F', 'N', 'T', 'X', 'a', 'b', 'd', 'f', 'i', 'm', 'n', 'o', 'r', 's', 't', 'x' ] ],
-        [ 'name',           [ '*', 'arr', 'blb', 'boo', 'byt', 'dec', 'fal', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'rec', 'str', 'tru', 'typ' ] ],
-        [ null  ,           [ '*', 'arr', 'blb', 'boo', 'byt', 'dec', 'fal', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'rec', 'str', 'tru', 'typ' ] ],
-        [ 'fullname',       [ 'any', 'array', 'blob', 'boolean', 'byte', 'decimal', 'false', 'float', 'integer', 'multi', 'null', 'number', 'object', 'record', 'string', 'true', 'type' ] ],
+        [ 'tinyname',       [ '*', 'F', 'N', 'T', 'X', 'a', 'b', 'd', 'f', 'i', 'm', 'n', 'o', 's', 't', 'x' ] ],
+        [ 'name',           [ '*', 'arr', 'blb', 'boo', 'byt', 'dec', 'fal', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'tru', 'typ' ] ],
+        [ null  ,           [ '*', 'arr', 'blb', 'boo', 'byt', 'dec', 'fal', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'tru', 'typ' ] ],
+        [ 'fullname',       [ 'any', 'array', 'blob', 'boolean', 'byte', 'decimal', 'false', 'float', 'integer', 'multi', 'null', 'number', 'object', 'string', 'true', 'type' ] ],
     ], function(tnf) { return tbase.names(tnf) })
 })
 
@@ -43,7 +43,7 @@ test('create errors', function (t) {
         [ null,                                 /Cannot read property/ ],
         [ 'foo',                                /unknown type/ ],
         [ {base: 'foo' },                       /unknown base/ ],
-        [ {base: 'rec', type: 'foo' },          /not a type/ ],
+        [ {base: 'obj', type: 'foo' },          /not a type/ ],
         [ {base: 'int', tinyname: 'foo' },      /tinyname without name/ ],
         [ {base: 'int', fullname: 'foo' },      /fullname without name/ ],
     ], tbase.create, { assert: 'throws' })

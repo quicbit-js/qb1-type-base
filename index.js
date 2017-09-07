@@ -29,8 +29,7 @@ var TYPE_DATA = [
     [ 'i',   'int',     'integer', 'An unbounded integer (range ..)' ],
     [ 'm',   'mul',     'multi',   'A set of possible types in the form t1|t2|t3, (also see array cycling types)'   ],
     [ 'n',   'num',     'number',  'Any rational number including decimals, floats, and integers' ],
-    [ 'o',   'obj',     'object',  'An object with flexible keys and flexible or fixed types which may be constrained using *-expressions'  ],   //  values must be as key/value pairs and the order in the value is the only order known.
-    [ 'r',   'rec',     'record',  'An object with fixed keys and types such as { field1: str, field2: [int] }' ],   //  order is known so values can be without keys (in order) or with keys (in any order)
+    [ 'o',   'obj',     'object',  'A record-like object with fixed field names, or flexible fields (using *-expressions)'  ],
     [ 's',   'str',     'string',  'A string of unicode characters (code points in range 0..1114111)'  ],   // (1-3 chained bytes, 7-21 bits)
     [ 't',   'typ',     'type',    'When type is used as a value, it represents of of the types in this list or any referenceable or registered type'  ],
     [ 'F',   'fal',     'false',   'False boolean value' ],
@@ -197,16 +196,6 @@ ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
 })
 
-// Record
-function RecType (props) {
-    Type.call(this, props)
-    this.fields = props.fields || {}
-}
-RecType.prototype = extend(Type.prototype, {
-    base: 'rec',
-    constructor: RecType,
-})
-
 // String
 function StrType (props) {
     Type.call(this, props)
@@ -252,7 +241,7 @@ NulType.prototype = extend(Type.prototype, {
     constructor: NulType,
 })
 
-var CTORS = [ AnyType, ArrType, BooType, BlbType, BytType, DecType, FltType, MulType, IntType, NumType, ObjType, RecType, StrType, TypType, FalType, TruType, NulType ]
+var CTORS = [ AnyType, ArrType, BooType, BlbType, BytType, DecType, FltType, MulType, IntType, NumType, ObjType, StrType, TypType, FalType, TruType, NulType ]
 CTORS.forEach(function (ctor) { ctor.prototype.code = CODES[ctor.prototype.base] })     // assign integer codes
 
 var CTORS_BY_BASE = CTORS.reduce(function (m, ctor) { m[ctor.prototype.base] = ctor; return m }, {})
@@ -284,8 +273,8 @@ var PROPS =
         [ 'v',         'val',           'value',        '*',            'Value matching the type'  ],
         [ 's',         'stip',          'stipulations', '{s:s|r}|N',    'Stipulations for write validation'  ],
         [ null,        'items',         null,           '[t]',          'Array types'  ],
-        [ null,        'fields',        null,           '{*:t}',        'Record types'  ],
-        [ null,        'expr',         'expressions',   '{*:t}',        'Object expression types'  ],
+        [ null,        'fields',        null,           '{*:t}',        'Object field types'  ],
+        [ null,        'expr',         'expressions',   '{*:t}',        'Object field types covering a range of fields via expressions'  ],
     ].map(function (r) { return new Prop(r[0], r[1], r[2], r[3], r[4]) } )
 
 var PROPS_BY_NAME = PROPS.reduce(function (m, p) {
