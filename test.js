@@ -19,12 +19,12 @@ var tbase = require('.')
 
 test('names', function (t) {
     t.table_assert([
-        [ 'tnf',            'exp' ],
+        [ 'name_prop',            'exp' ],
         [ 'tinyname',       [ '*', 'F', 'N', 'T', 'X', 'a', 'b', 'd', 'f', 'i', 'm', 'n', 'o', 's', 't', 'x' ] ],
         [ 'name',           [ '*', 'arr', 'blb', 'boo', 'byt', 'dec', 'fal', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'tru', 'typ' ] ],
         [ null  ,           [ '*', 'arr', 'blb', 'boo', 'byt', 'dec', 'fal', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'tru', 'typ' ] ],
         [ 'fullname',       [ 'any', 'array', 'blob', 'boolean', 'byte', 'decimal', 'false', 'float', 'integer', 'multi', 'null', 'number', 'object', 'string', 'true', 'type' ] ],
-    ], function(tnf) { return tbase.names(tnf) })
+    ], function(name_prop) { return tbase.names(name_prop) })
 })
 
 test('create', function (t) {

@@ -277,7 +277,7 @@ Prop.prototype = {
 var PROPS =
     [
         // tinyname     name            fullname        type            description
-        [ 't',         'type',          null,           's|o',          'Describes the type / structure / form of the value'  ],
+        [ 't',         'typ',           'type',         's|o',          'Describes the type / structure / form of the value'  ],
         [ 'n',         'name',          null,           's',            'A concise name of a type name or property such as "int" or "arr" or "typ"' ],
         [ 'd',         'desc',          'description',  's|N',          'A description of a type or property' ],
         [ 'tn',        'tinyname',      null,           's|N',          'The tiny name of a name or property such as "i" or "a" which are defined only for the most common properties and types'  ],
@@ -297,13 +297,24 @@ var PROPS_BY_NAME = PROPS.reduce(function (m, p) {
     return m
 }, {})
 
+//  return array of all the base types (new copies) - in name order
+function base_types () {
+    return names().map(function (n) { return create(n) })
+}
+
+// return sorted list of names.  name_prop is 'name' (default) 'tinyname' or 'fullname'
+function names (name_prop) {
+    return TYPES.map(function (t) { return t[name_prop || 'name'] }).sort()
+}
+
 function err (msg) { throw Error(msg) }
 
 var TYPES = TYPE_DATA.map(function (r) { return create({base: r[1], tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }) })
 var TYPES_BY_NAME = TYPES.reduce(function (m, t) { m[t.name] = t; return m }, {})
 
 module.exports = {
-    names: function (tnf) { return TYPES.map(function (t) { return t[tnf || 'name'] }).sort() },
+    names: names,
+    types: base_types,
     create: create,
     PROPS_BY_NAME: PROPS_BY_NAME,
     CODES: CODES
