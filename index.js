@@ -16,6 +16,7 @@
 
 var assign = require('qb-assign')
 var extend = require('qb-extend-flat')
+var qbobj = require('qb1-obj')
 
 var TYPE_DATA = [
     // tiny,  curt,     full,       description
@@ -186,6 +187,19 @@ NumType.prototype = extend(Type.prototype, {
     constructor: NumType,
 })
 
+// return a wild-card regular expression. cache for fast lookup.
+var WILD_EXPR = {}
+function wildcard_regex(s) {
+    var ret = WILD_EXPR[s]
+    if (!ret) {
+        var ns = s.replace(/[-[\]{}()+?.,\\^$|#\s]/g, '\\$&');  // escape everything except '*'
+        ns = '^' + ns.replace(/[*]/g, '.*')  + '$'        // xyz*123 -> ^xyz.*123$
+        ret = new RegExp(ns)
+        WILD_EXPR[s] = ret
+    }
+    return ret
+}
+
 // Object - like record, but has one or more expressions
 function ObjType (props) {
     Type.call(this, props)
@@ -206,6 +220,22 @@ ObjType.prototype = extend(Type.prototype, {
         } else {
             return false
         }
+    },
+    fieldtyp: function (n) {
+        var t = this.fields[n]
+        if (t) {
+            return t
+        }
+
+        var ekeys = Object.keys(this.expr)
+        for (var i=0; i<ekeys.length; i++) {
+            var k = ekeys[i]
+            var re =  wildcard_regex(k)
+            if (re.test(n)) {
+                return this.expr[k]
+            }
+        }
+        return null     // no matching field
     }
 })
 

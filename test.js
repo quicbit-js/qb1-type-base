@@ -30,9 +30,12 @@ test('names', function (t) {
 test('create', function (t) {
     t.table_assert([
         [ 'create',                                 'exp'  ],
-        [ 'str',                                    { name: 'str', desc: 'A string of unicode characters (code points in range 0..1114111)', tinyname: 's', fullname: 'string', stip: null }, ],
-        [ {base:'int'},                             { name: null, desc: null, fullname: null, tinyname: null, stip: null }, ],
-        [ {base:'int', name: 'foo'},                { name: 'foo', desc: null, tinyname: 'foo', fullname: 'foo', stip: null }, ],
+        [ 'str',                                    { name: 'str', desc: 'A string of unicode characters (code points in range 0..1114111)', tinyname: 's', fullname: 'string', stip: null } ],
+        [ {base: 'obj', fields: {a:'i'}},           { name: null, desc: null, fullname: null, tinyname: null, stip: null, fields: { a: 'i' }, expr: {} } ],
+        [ {base: 'obj', expr: {'a*':'i'}},           { name: null, desc: null, fullname: null, tinyname: null, stip: null, fields: {}, expr: {'a*':'i'} } ],
+        [ {base:'int'},                             { name: null, desc: null, fullname: null, tinyname: null, stip: null } ],
+        [ {base:'int', name: 'foo'},                { name: 'foo', desc: null, tinyname: 'foo', fullname: 'foo', stip: null } ],
+        [ {base:'obj', name: 'foo'},                { name: 'foo', desc: null, tinyname: 'foo', fullname: 'foo', stip: null, fields: {}, expr: { '*': '*' }} ],
     ], tbase.create )
 })
 
@@ -47,6 +50,18 @@ test('create errors', function (t) {
         [ {base: 'int', tinyname: 'foo' },      /tinyname without name/ ],
         [ {base: 'int', fullname: 'foo' },      /fullname without name/ ],
     ], tbase.create, { assert: 'throws' })
+})
+
+test('fieldtyp', function (t) {
+    t.table_assert([
+        [ 'obj',                                                    'field',            'exp' ],
+        [ { base: 'obj', fields: {a:'i'} },                         'a',                'i' ],
+        [ { base: 'obj', fields: {a:'i'}, expr: {'a*':'n'} },       'a',                'i' ],
+        [ { base: 'obj', fields: {a:'i'}, expr: {'a*':'n'} },       'ab',               'n' ],
+        [ { base: 'obj', fields: {a:'i'}, expr: {'*a':'n', 'a*': 'o'} },       'ab',     'o' ],
+    ], function (obj, field) {
+        return tbase.create(obj).fieldtyp(field)
+    })
 })
 
 test('toString', function (t) {
