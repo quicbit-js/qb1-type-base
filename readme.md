@@ -1,11 +1,34 @@
 # qb1-type-base
 
-Definitions of the fundamental 'base' types underpinning qb1 serialization.
+Object definitions for the fundamental 'base' types and tokens that underpin qb1 serialization.
 
 ## Overview
 
-qb1-type-base defines the basic types which support reading and writing structured information 
-in intuitive as well as compact forms, as clean strings, or using JSON format
+qb1-type-base defines the types which support reading and writing structured information.  These types
+include  JSON types plus refined types strongly related to the JSON types:
+
+    qb1 and JSON        qb1 only
+
+    object
+    array
+    
+    number              decimal
+                        integer
+                        uinteger    (unsigned integer)
+                        float
+                        rational
+                        byte
+
+    string              blob
+    
+    boolean     
+    
+    null
+    true
+    false
+    
+'qb1 only' types are compatible with and auto-conversion to and from number and string to allow seamless compatibility 
+with JSON.
 
 ### Representing Types as Simple Strings
 
