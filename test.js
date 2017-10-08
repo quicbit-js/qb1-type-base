@@ -15,6 +15,7 @@
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 var test = require('test-kit').tape()
+var qbobj = require('qb1-obj')
 var tbase = require('.')
 
 test('names', function (t) {
@@ -29,14 +30,26 @@ test('names', function (t) {
 
 test('create', function (t) {
     t.table_assert([
-        [ 'create',                                 'exp'  ],
-        [ 'str',                                    { name: 'str', desc: 'A string of unicode characters (code points in range 0..1114111)', tinyname: 's', fullname: 'string', stip: null } ],
-        [ {base: 'obj', fields: {a:'i'}},           { name: null, desc: null, fullname: null, tinyname: null, stip: null, fields: { a: 'i' }, expr: {} } ],
-        [ {base: 'obj', expr: {'a*':'i'}},           { name: null, desc: null, fullname: null, tinyname: null, stip: null, fields: {}, expr: {'a*':'i'} } ],
-        [ {base:'int'},                             { name: null, desc: null, fullname: null, tinyname: null, stip: null } ],
-        [ {base:'int', name: 'foo'},                { name: 'foo', desc: null, tinyname: 'foo', fullname: 'foo', stip: null } ],
-        [ {base:'obj', name: 'foo'},                { name: 'foo', desc: null, tinyname: 'foo', fullname: 'foo', stip: null, fields: {}, expr: { '*': '*' }} ],
-    ], tbase.create )
+        [ 'obj_or_str',                                 'exp'  ],
+        [ 'str',                                    { base: 'str', name: 'str' } ],
+        [ {base: 'obj', fields: {a:'i'}},           { base: 'obj', fields: { a: 'i' }, expr: {} } ],
+        [ {base: 'obj', expr: {'a*':'i'}},          { base: 'obj', fields: {}, expr: { 'a*': 'i' } } ],
+        [ {base:'int'},                             { base: 'int' }],
+        [ {base:'int', name: 'foo'},                { base: 'int', name: 'foo' } ],
+        [ {base:'obj', name: 'foo'},                { base: 'obj', name: 'foo', fields: {}, expr: { '*': '*' } }],
+    ], function (obj_or_str) {
+        var t = tbase.create(obj_or_str)
+        return qbobj.filter(t, function (k,v) {
+            return v != null && ! {
+                type: 1,
+                desc: 1,
+                fullname: 1,
+                tinyname: 1,
+                stip: 1,
+                code: 1,
+            }[k]
+        })}
+    )
 })
 
 

@@ -37,7 +37,7 @@ var TYPE_DATA = [
     [ 'N',   'nul',     'null',    'A null value which represents "not-set" for most situations' ],
     [ 'T',   'tru',     'true',    'True boolean value' ],
 ]
-var CODES = TYPE_DATA.reduce(function (m, r) { m[r[1]] = (r[0] || r[1]).charCodeAt(0); return m }, {})
+var BASE_CODES = TYPE_DATA.reduce(function (m, r) { m[r[1]] = (r[0] || r[1]).charCodeAt(0); return m }, {})
 
 // qb1 core/bootstrap types.  all types are extensions or assemblies of these core types.
 // Each built-in type has the form:
@@ -63,7 +63,10 @@ var CODES = TYPE_DATA.reduce(function (m, r) { m[r[1]] = (r[0] || r[1]).charCode
 // Unlike records that have fixed structure, an object allows unlimited key possibilties.  Definitions of records themselves are
 // actually 'object' types with the stipulation that keys start with a letter and may not contain '*'.
 //
-function Type (props) {
+function Type (base, props) {
+    this.type = 'typ'
+    this.base = base || err('no base')
+    this.code = props.name && BASE_CODES[props.name] || -1
     this.name = props.name || null
     this.desc = props.desc || null
     if (props.name) {
@@ -78,9 +81,6 @@ function Type (props) {
     this.stip = props.stip || null
 }
 Type.prototype = {
-    code: -1,
-    base: null,
-    type: 'typ',
     constructor: Type,
     toString: function () { return this.name || 'unnamed' },
 }
@@ -96,94 +96,84 @@ function create (props) {
 
 // Any
 function AnyType (props) {
-    Type.call(this, props)
+    Type.call(this, '*', props)
 }
 AnyType.prototype = extend(Type.prototype, {
-    base: '*',
     constructor: AnyType,
 })
 
 // Array
 function ArrType (props) {
-    Type.call(this, props)
+    Type.call(this, 'arr', props)
     this.items = props.items || ['*']
 }
 ArrType.prototype = extend(Type.prototype, {
-    base: 'arr',
     constructor: ArrType,
     is_generic: function () { return this.items.length == 1 && this.items[0] === '*' }
 })
 
 // Blob
 function BlbType (props) {
-    Type.call(this, props)
+    Type.call(this, 'blb', props)
 }
 BlbType.prototype = extend(Type.prototype, {
-    base: 'blb',
     constructor: BlbType,
 })
 
 // Boolean
 function BooType (props) {
-    Type.call(this, props)
+    Type.call(this, 'boo', props)
 }
 BooType.prototype = extend(Type.prototype, {
-    base: 'boo',
     constructor: BooType,
 })
 
 // Byte
 function BytType (props) {
-    Type.call(this, props)
+    Type.call(this, 'byt', props)
 }
 BytType.prototype = extend(Type.prototype, {
-    base: 'byt',
     constructor: BytType,
 })
 
 // Decimal
 function DecType (props) {
-    Type.call(this, props)
+    Type.call(this, 'dec', props)
 }
 DecType.prototype = extend(Type.prototype, {
-    base: 'dec',
     constructor: DecType,
 })
 
 // Float
 function FltType (props) {
-    Type.call(this, props)
+    Type.call(this, 'flt', props)
 }
 FltType.prototype = extend(Type.prototype, {
-    base: 'flt',
     constructor: FltType,
 })
 
 // Multiple
 function MulType (props) {
-    Type.call(this, props)
+    Type.call(this, 'mul', props)
 }
 MulType.prototype = extend(Type.prototype, {
-    base: 'mul',
     constructor: MulType,
 })
 
 
 // Integer
 function IntType (props) {
-    Type.call(this, props)
+    Type.call(this, 'int', props)
 }
 IntType.prototype = extend(Type.prototype, {
-    base: 'int',
     constructor: IntType,
 })
 
 // Number
 function NumType (props) {
-    Type.call(this, props)
+    Type.call(this, 'num', props)
 }
 NumType.prototype = extend(Type.prototype, {
-    base: 'num',
     constructor: NumType,
 })
 
@@ -202,7 +192,7 @@ function wildcard_regex(s) {
 
 // Object - like record, but has one or more expressions
 function ObjType (props) {
-    Type.call(this, props)
+    Type.call(this, 'obj', props)
     this.fields = props.fields || {}
     this.expr = props.expr || {}
     // default to any-content object when no fields are given
@@ -211,12 +201,20 @@ function ObjType (props) {
     }
 }
 ObjType.prototype = extend(Type.prototype, {
-    base: 'obj',
     constructor: ObjType,
     // return true if fields are simply {'*':'*'}
     is_generic: function () {
         if (Object.keys(this.fields).length === 0) {
             return this.expr['*'] === '*' && Object.keys(this.expr).length === 1
+        } else {
+            return false
+        }
+    },
+    // return true if this is object has only the wild-card key {'*': some-type}
+    has_generic_key: function () {
+        if (Object.keys(this.fields).length === 0) {
+            var ekeys = Object.keys(this.expr)
+            return ekeys.length === 1 && ekeys[0] === '*'
         } else {
             return false
         }
@@ -241,53 +239,62 @@ ObjType.prototype = extend(Type.prototype, {
 
 // String
 function StrType (props) {
-    Type.call(this, props)
+    Type.call(this, 'str', props)
 }
 StrType.prototype = extend(Type.prototype, {
-    base: 'str',
     constructor: StrType,
 })
 
 // Type (Type)
 function TypType (props) {
-    Type.call(this, props)
+    Type.call(this, 'typ', props)
 }
 TypType.prototype = extend(Type.prototype, {
-    base: 'typ',
     constructor: TypType,
 })
 
 // False
 function FalType (props) {
-    Type.call(this, props)
+    Type.call(this, 'fal', props)
 }
 FalType.prototype = extend(Type.prototype, {
-    base: 'fal',
     constructor: FalType,
 })
 
 // True
 function TruType (props) {
-    Type.call(this, props)
+    Type.call(this, 'tru', props)
 }
 TruType.prototype = extend(Type.prototype, {
-    base: 'tru',
     constructor: TruType,
 })
 
 // Null
 function NulType (props) {
-    Type.call(this, props)
+    Type.call(this, 'nul', props)
 }
 NulType.prototype = extend(Type.prototype, {
-    base: 'nul',
     constructor: NulType,
 })
 
-var CTORS = [ AnyType, ArrType, BooType, BlbType, BytType, DecType, FltType, MulType, IntType, NumType, ObjType, StrType, TypType, FalType, TruType, NulType ]
-CTORS.forEach(function (ctor) { ctor.prototype.code = CODES[ctor.prototype.base] })     // assign integer codes
-
-var CTORS_BY_BASE = CTORS.reduce(function (m, ctor) { m[ctor.prototype.base] = ctor; return m }, {})
+var CTORS_BY_BASE = {
+    '*': AnyType,
+    arr: ArrType,
+    boo: BooType,
+    blb: BlbType,
+    byt: BytType,
+    dec: DecType,
+    flt: FltType,
+    mul: MulType,
+    int: IntType,
+    num: NumType,
+    obj: ObjType,
+    str: StrType,
+    typ: TypType,
+    fal: FalType,
+    tru: TruType,
+    nul: NulType,
+}
 
 function Prop(tinyname, name, fullname, type, desc) {
     this.name = name
@@ -347,5 +354,5 @@ module.exports = {
     types: base_types,
     create: create,
     PROPS_BY_NAME: PROPS_BY_NAME,
-    CODES: CODES
+    CODES: BASE_CODES
 }
