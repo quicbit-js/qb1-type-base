@@ -65,8 +65,8 @@ var BASE_CODES = TYPE_DATA.reduce(function (m, r) { m[r[1]] = (r[0] || r[1]).cha
 //
 function Type (base, props) {
     this.type = 'typ'
-    this.base = base || err('no base')
-    this.code = props.name && BASE_CODES[props.name] || -1
+    this.base = base
+    this.code = BASE_CODES[props.base]
     this.name = props.name || null
     this.desc = props.desc || null
     if (props.name) {
@@ -86,12 +86,13 @@ Type.prototype = {
 }
 
 function create (props) {
-    if (typeof props === 'string') {
-        props = TYPES_BY_NAME[props] || err('unknown type: ' + props)
-    }
     var ctor = CTORS_BY_BASE[props.base] || err('unknown base type: ' + props.base)
-    props.type == null || props.type === 'typ' || err('object is not a type object: ' + props.type)
+    props.type == null || props.type === 'typ' || (props.type && props.type.name === 'typ') || err('object is not a type object: ' + props.type)
     return new (ctor)(props)
+}
+
+function lookup (name) {
+    return TYPES_BY_NAME[name]
 }
 
 // Any
@@ -296,11 +297,12 @@ var CTORS_BY_BASE = {
     nul: NulType,
 }
 
-function Prop(tinyname, name, fullname, type, desc) {
+function Prop(tinyname, name, fullname, inherit, type, desc) {
     this.name = name
     this.tinyname = tinyname || name
     this.fullname = fullname || name
     this.desc = desc
+    this.inherit = inherit
     this.type = type
 }
 Prop.prototype = {
@@ -311,21 +313,30 @@ Prop.prototype = {
 // keeps a normalized version of the user-facing form for reference and adds other derived
 // properties, but keep in mind that these object properties fully describe a given object and
 // the internal properties are derived for convenience or performance.
+
+// type inherit flags (child-to-container inheritance):
+//
+//      YES_EQL   - inherited. if both are set they must be equal
+//      NO_NEQ    - not inherited.  if both are set they must not be equal
+//      NO        - not inherited.  value is ignored.
+//      YES_VAL   - inherited according to the value rules specified by the inherit property (these rules)
+//      YES_MRG   - inherit/merge.  result will be a subset of the container and child value (intersection of constraints)
 var PROPS =
     [
-        // tinyname     name            fullname        type            description
-        [ 't',         'typ',           'type',         's|o',          'Describes the type / structure / form of the value'  ],
-        [ 'n',         'name',          null,           's',            'A concise name of a type name or property such as "int" or "arr" or "typ"' ],
-        [ 'd',         'desc',          'description',  's|N',          'A description of a type or property' ],
-        [ 'tn',        'tinyname',      null,           's|N',          'The tiny name of a name or property such as "i" or "a" which are defined only for the most common properties and types'  ],
-        [ 'fn',        'fullname',      null,           's|N',          'The full name of a type or property such as "description", "integer" or "array"'  ],
-        [ 'b',         'base',          null,           '*',            'Basic type that this type is based upon (integer, string, object, record...)'  ],
-        [ 'v',         'val',           'value',        '*',            'Value matching the type'  ],
-        [ 's',         'stip',          'stipulations', '{s:s|r}|N',    'Stipulations for write validation'  ],
-        [ null,        'items',         null,           '[t]',          'Array types'  ],
-        [ null,        'fields',        null,           '{*:t}',        'Object field types'  ],
-        [ null,        'expr',         'expressions',   '{*:t}',        'Object field types covering a range of fields via expressions'  ],
-    ].map(function (r) { return new Prop(r[0], r[1], r[2], r[3], r[4]) } )
+        // tinyname     name            fullname        inherit,    type            description
+        [ 't',         'type',          null,           'YES_EQL',  's|o',          'Describes the type / structure / form of the value'  ],
+        [ 'n',         'name',          null,           'NO_NEQ',   's',            'A concise name of a type name or property such as "int" or "arr" or "typ"' ],
+        [ 'd',         'desc',          'description',  'NO',       's|N',          'A description of a type or property' ],
+        [ 's',         'stip',          'stipulations', 'YES_MRG',  '{s:s|r}|N',    'Stipulations for write validation'  ],
+        [ 'b',         'base',          null,           'YES_EQL',  '*',            'Basic type that this type is based upon (integer, string, object, record...)'  ],
+        [ null,        'code',          null,           'NO',       'n',            'Basic type that this type is based upon (integer, string, object, record...)'  ],
+        [ 'v',         'value',         null,           'YES_VAL',  '*',            'Value matching the type'  ],
+        [ null,        'items',         null,           'YES_MRG',  '[t]',          'Array types'  ],
+        [ null,        'fields',        null,           'YES_MRG',  '{*:t}',        'Object field types'  ],
+        [ null,        'expr',         'expressions',   'MRG',      '{*:t}',        'Object field types covering a range of fields via expressions'  ],
+        [ 'tn',        'tinyname',      null,           'NO_NEQ',   's|N',          'The tiny name of a name or property such as "i" or "a" which are defined only for the most common properties and types'  ],
+        [ 'fn',        'fullname',      null,           'NO_NEQ',   's|N',          'The full name of a type or property such as "description", "integer" or "array"'  ],
+    ].map(function (r) { return new Prop(r[0], r[1], r[2], r[3], r[4], r[5]) } )
 
 var PROPS_BY_NAME = PROPS.reduce(function (m, p) {
     m[p.name] = p
@@ -347,12 +358,13 @@ function names (name_prop) {
 function err (msg) { throw Error(msg) }
 
 var TYPES = TYPE_DATA.map(function (r) { return create({base: r[1], tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }) })
-var TYPES_BY_NAME = TYPES.reduce(function (m, t) { m[t.name] = t; return m }, {})
+var TYPES_BY_NAME = TYPES.reduce(function (m, t) { m[t.name] = m[t.fullname] = m[t.tinyname] = t; return m }, {})
 
 module.exports = {
     names: names,
     types: base_types,
     create: create,
+    lookup: lookup,
     PROPS_BY_NAME: PROPS_BY_NAME,
     CODES: BASE_CODES
 }

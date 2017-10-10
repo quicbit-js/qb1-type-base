@@ -18,6 +18,16 @@ var test = require('test-kit').tape()
 var qbobj = require('qb1-obj')
 var tbase = require('.')
 
+test('props', function (t) {
+    t.table_assert([
+        [ 'name',           'exp' ],
+        [ 'type',            { n: 'type', tn: 't', fn: 'type', inherit: 'YES_EQL' } ],
+    ], function (name) {
+        var p = tbase.PROPS_BY_NAME[name]
+        return { n: p.name, tn: p.tinyname, fn: p.fullname, inherit: p.inherit }
+    } )
+})
+
 test('names', function (t) {
     t.table_assert([
         [ 'name_prop',            'exp' ],
@@ -28,10 +38,16 @@ test('names', function (t) {
     ], function(name_prop) { return tbase.names(name_prop) })
 })
 
+test('lookup', function (t) {
+    t.table_assert([
+        [ 'name',                                   'exp' ],
+        [ 'str',                                    { type: 'typ', base: 'str', code: 115, name: 'str', desc: 'A string of unicode characters (code points in range 0..1114111)', tinyname: 's', fullname: 'string', stip: null } ],
+    ], tbase.lookup)
+})
+
 test('create', function (t) {
     t.table_assert([
-        [ 'obj_or_str',                                 'exp'  ],
-        [ 'str',                                    { base: 'str', name: 'str' } ],
+        [ 'obj_or_str',                             'exp'  ],
         [ {base: 'obj', fields: {a:'i'}},           { base: 'obj', fields: { a: 'i' }, expr: {} } ],
         [ {base: 'obj', expr: {'a*':'i'}},          { base: 'obj', fields: {}, expr: { 'a*': 'i' } } ],
         [ {base:'int'},                             { base: 'int' }],
@@ -52,12 +68,10 @@ test('create', function (t) {
     )
 })
 
-
 test('create errors', function (t) {
     t.table_assert([
         [ 'create',                             'exp'  ],
         [ null,                                 /Cannot read property/ ],
-        [ 'foo',                                /unknown type/ ],
         [ {base: 'foo' },                       /unknown base/ ],
         [ {base: 'obj', type: 'foo' },          /not a type/ ],
         [ {base: 'int', tinyname: 'foo' },      /tinyname without name/ ],
@@ -79,9 +93,12 @@ test('fieldtyp', function (t) {
 
 test('toString', function (t) {
     t.table_assert([
-        [ 'create',                             'exp'  ],
+        [ 'args',                             'exp'  ],
         [ 'str',                                'str' ],
         [ {base:'str'},                         'unnamed' ],
         [ {base:'str', name: 'i'},              'i' ],
-    ], function (create) { return tbase.create(create).toString() })
+    ], function (args) {
+        var t = typeof args === 'string' ? tbase.lookup(args) : tbase.create(args)
+        return t.toString()
+    })
 })
