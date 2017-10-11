@@ -70,8 +70,8 @@ function Type (base, props) {
     this.name = props.name || null
     this.desc = props.desc || null
     if (props.name) {
-        this.tinyname = props.tinyname || props.name || null
-        this.fullname = props.fullname || props.name || null
+        this.tinyname = props.tinyname || props.name
+        this.fullname = props.fullname || props.name
     } else {
         !props.tinyname || err('tinyname without name')
         !props.fullname || err('fullname without name')
@@ -345,9 +345,13 @@ var PROPS_BY_NAME = PROPS.reduce(function (m, p) {
     return m
 }, {})
 
+var TYPES = TYPE_DATA.map(function (r) { return create({base: r[1], tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }) })
+TYPES.sort(function (a,b) { return a.name > b.name ? 1 : -1 })          // names never same so no === compare
+var TYPES_BY_NAME = TYPES.reduce(function (m, t) { m[t.name] = m[t.fullname] = m[t.tinyname] = t; return m }, {})
+
 //  return array of all the base types (new copies) - in name order
 function base_types () {
-    return names().map(function (n) { return create(n) })
+    return names().map(function (n) { return lookup(n) })
 }
 
 // return sorted list of names.  name_prop is 'name' (default) 'tinyname' or 'fullname'
@@ -357,14 +361,12 @@ function names (name_prop) {
 
 function err (msg) { throw Error(msg) }
 
-var TYPES = TYPE_DATA.map(function (r) { return create({base: r[1], tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }) })
-var TYPES_BY_NAME = TYPES.reduce(function (m, t) { m[t.name] = m[t.fullname] = m[t.tinyname] = t; return m }, {})
-
 module.exports = {
     names: names,
     types: base_types,
     create: create,
     lookup: lookup,
-    PROPS_BY_NAME: PROPS_BY_NAME,
-    CODES: BASE_CODES
+    TYPES_BY_NAME: TYPES_BY_NAME,   // by name, tinyname and fullname
+    PROPS_BY_NAME: PROPS_BY_NAME,   // by name, tinyname and fullname
+    CODES: BASE_CODES,
 }

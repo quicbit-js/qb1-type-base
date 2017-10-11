@@ -38,6 +38,12 @@ test('names', function (t) {
     ], function(name_prop) { return tbase.names(name_prop) })
 })
 
+test('types', function (t) {
+    var types = tbase.types()
+    t.same(types.map(function (t) { return t.name }), tbase.names())
+    t.end()
+})
+
 test('lookup', function (t) {
     t.table_assert([
         [ 'name',                                   'exp' ],
@@ -81,13 +87,37 @@ test('create errors', function (t) {
 
 test('fieldtyp', function (t) {
     t.table_assert([
-        [ 'obj',                                                    'field',            'exp' ],
-        [ { base: 'obj', fields: {a:'i'} },                         'a',                'i' ],
-        [ { base: 'obj', fields: {a:'i'}, expr: {'a*':'n'} },       'a',                'i' ],
-        [ { base: 'obj', fields: {a:'i'}, expr: {'a*':'n'} },       'ab',               'n' ],
-        [ { base: 'obj', fields: {a:'i'}, expr: {'*a':'n', 'a*': 'o'} },       'ab',     'o' ],
+        [ 'obj',                                                            'field',            'exp' ],
+        [ { base: 'obj', fields: {a:'i'} },                                 'a',                'i' ],
+        [ { base: 'obj', fields: {a:'i'}, expr: {'a*':'n'} },               'a',                'i' ],
+        [ { base: 'obj', fields: {a:'i'}, expr: {'a*':'n'} },               'ba',               null ],
+        [ { base: 'obj', fields: {a:'i'}, expr: {'a*':'n'} },               'ab',               'n' ],
+        [ { base: 'obj', fields: {a:'i'}, expr: {'*a':'n', 'a*': 'o'} },    'ab',     'o' ],
     ], function (obj, field) {
         return tbase.create(obj).fieldtyp(field)
+    })
+})
+
+test('generic object', function (t) {
+    t.table_assert([
+        [ 'obj',                                                                'exp' ],
+        [ { base: 'obj', fields: {a:'i'} },                                     [ false, false ] ],
+        [ { base: 'obj', expr: {'*':'i'} },                                     [ true , false ] ],
+        [ { base: 'obj' },                                                      [ true , true ] ],
+    ], function (obj) {
+        var t = tbase.create(obj)
+        return [t.has_generic_key(), t.is_generic()]
+    })
+})
+
+test('generic array', function (t) {
+    t.table_assert([
+        [ 'obj',                                                                'exp' ],
+        [ { base: 'arr', items: ['*', 'i'] },                                   false ],
+        [ { base: 'arr', items: ['*'] },                                        true ],
+    ], function (obj) {
+        var t = tbase.create(obj)
+        return t.is_generic()
     })
 })
 
