@@ -38,17 +38,15 @@ test('names', function (t) {
     ], function(name_prop) { return tbase.names(name_prop) })
 })
 
-test('types', function (t) {
-    var types = tbase.types()
-    t.same(types.map(function (t) { return t.name }), tbase.names())
-    t.end()
-})
-
 test('lookup', function (t) {
     t.table_assert([
         [ 'name',                                   'exp' ],
-        [ 'str',                                    { type: 'typ', base: 'str', code: 115, name: 'str', desc: 'A string of unicode characters (code points in range 0..1114111)', tinyname: 's', fullname: 'string', stip: null } ],
-    ], tbase.lookup)
+        [ 'str',                                    { name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
+        [ 'typ',                                    { name: 'typ', tinyname: 't', fullname: 'type', base: 'typ' } ],
+    ], function (name) {
+        var t = tbase.lookup(name)
+        return qbobj.select(t, ['name', 'tinyname', 'fullname', 'base'])
+    })
 })
 
 test('create', function (t) {
@@ -61,7 +59,7 @@ test('create', function (t) {
         [ {base:'obj', name: 'foo'},                { base: 'obj', name: 'foo', fields: {}, expr: { '*': '*' } }],
     ], function (obj_or_str) {
         var t = tbase.create(obj_or_str)
-        return qbobj.filter(t, function (k,v) {
+        var ret = qbobj.filter(t, function (k,v) {
             return v != null && ! {
                 type: 1,
                 desc: 1,
@@ -70,8 +68,9 @@ test('create', function (t) {
                 stip: 1,
                 code: 1,
             }[k]
-        })}
-    )
+        })
+        return ret
+    })
 })
 
 test('create errors', function (t) {
@@ -123,7 +122,7 @@ test('generic array', function (t) {
 
 test('toString', function (t) {
     t.table_assert([
-        [ 'args',                             'exp'  ],
+        [ 'args',                               'exp'  ],
         [ 'str',                                'str' ],
         [ {base:'str'},                         'unnamed' ],
         [ {base:'str', name: 'i'},              'i' ],

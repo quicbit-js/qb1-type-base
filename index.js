@@ -18,26 +18,44 @@ var assign = require('qb-assign')
 var extend = require('qb-extend-flat')
 var qbobj = require('qb1-obj')
 
-var TYPE_DATA = [
-    // tiny,  curt,     full,       description
-    [ null,  '*',       'any',     'Represents any value or type.  For example, [*] is an array of anything' ],
-    [ 'a',   'arr',     'array',   'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]' ],
-    [ 'X',   'blb',     'blob',    'A sequence of bytes' ],
-    [ 'b',   'boo',     'boolean', 'A true or false value.  Also can be a 0 or non-zero byte' ],
-    [ 'x',   'byt',     'byte',    'An integer in range 0..255'   ],
-    [ 'd',   'dec',     'decimal', 'An unbounded base-10 number (range ~~)' ],
-    [ 'f',   'flt',     'float',   'An unbounded base-2 number (range ~~)' ],
-    [ 'i',   'int',     'integer', 'An unbounded integer (range ..)' ],
-    [ 'm',   'mul',     'multi',   'A set of possible types in the form t1|t2|t3, (also see array cycling types)'   ],
-    [ 'n',   'num',     'number',  'Any rational number including decimals, floats, and integers' ],
-    [ 'o',   'obj',     'object',  'A record-like object with fixed field names, or flexible fields (using *-expressions)'  ],
-    [ 's',   'str',     'string',  'A string of unicode characters (code points in range 0..1114111)'  ],   // (1-3 chained bytes, 7-21 bits)
-    [ 't',   'typ',     'type',    'When type is used as a value, it represents of of the types in this list or any referenceable or registered type'  ],
-    [ 'F',   'fal',     'false',   'False boolean value' ],
-    [ 'N',   'nul',     'null',    'A null value which represents "not-set" for most situations' ],
-    [ 'T',   'tru',     'true',    'True boolean value' ],
-]
-var BASE_CODES = TYPE_DATA.reduce(function (m, r) { m[r[1]] = (r[0] || r[1]).charCodeAt(0); return m }, {})
+var TYPE_DATA = {
+// name
+    //   tinyname  fullname  descriptoin
+    '*': [ '*',   'any',     'Represents any value or type.  For example, [*] is an array of anything' ],
+    arr: [ 'a',   'array',   'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]' ],
+    blb: [ 'X',   'blob',    'A sequence of bytes' ],
+    boo: [ 'b',   'boolean', 'A true or false value.  Also can be a 0 or non-zero byte' ],
+    byt: [ 'x',   'byte',    'An integer in range 0..255'   ],
+    dec: [ 'd',   'decimal', 'An unbounded base-10 number (range ~~)' ],
+    fal: [ 'F',   'false',   'False boolean value' ],
+    flt: [ 'f',   'float',   'An unbounded base-2 number (range ~~)' ],
+    int: [ 'i',   'integer', 'An unbounded integer (range ..)' ],
+    mul: [ 'm',   'multi',   'A set of possible types in the form t1|t2|t3, (also see array cycling types)'   ],
+    nul: [ 'N',   'null',    'A null value which represents "not-set" for most situations' ],
+    num: [ 'n',   'number',  'Any rational number including decimals, floats, and integers' ],
+    obj: [ 'o',   'object',  'A record-like object with fixed field names, or flexible fields (using *-expressions)'  ],
+    str: [ 's',   'string',  'A string of unicode characters (code points in range 0..1114111)'  ],   // (1-3 chained bytes, 7-21 bits)
+    tru: [ 'T',   'true',    'True boolean value' ],
+    typ: [ 't',   'type',    'When type is used as a value, it represents one of the types in this list or any referenceable or registered type'  ],
+}
+
+var CTORS_BY_BASE = {
+    '*': AnyType,
+    arr: ArrType,
+    boo: BooType,
+    blb: BlbType,
+    byt: BytType,
+    dec: DecType,
+    flt: FltType,
+    mul: MulType,
+    int: IntType,
+    num: NumType,
+    obj: ObjType,
+    str: StrType,
+    fal: FalType,
+    tru: TruType,
+    nul: NulType,
+}
 
 // qb1 core/bootstrap types.  all types are extensions or assemblies of these core types.
 // Each built-in type has the form:
@@ -64,7 +82,7 @@ var BASE_CODES = TYPE_DATA.reduce(function (m, r) { m[r[1]] = (r[0] || r[1]).cha
 // actually 'object' types with the stipulation that keys start with a letter and may not contain '*'.
 //
 function Type (base, props) {
-    this.type = 'typ'
+    this.type = props.type
     this.base = base
     this.code = BASE_CODES[props.base]
     this.name = props.name || null
@@ -82,12 +100,32 @@ function Type (base, props) {
 }
 Type.prototype = {
     constructor: Type,
-    toString: function () { return this.name || 'unnamed' },
+    toString: function () {
+        return this.name || 'unnamed'
+    },
 }
 
+// Type (Type)
+function TypType (props) {
+    Type.call(this, 'typ', props)
+    this.type = null           // use null to indicate this special type - instead of cyclical this.type = this (acyclic graphs are easier to work with)
+}
+TypType.prototype = extend(Type.prototype, {
+    constructor: TypType,
+})
+
+var TYPTYPE
 function create (props) {
+    if (TYPTYPE == null) {
+        var td = TYPE_DATA.typ
+        TYPTYPE = new TypType({base: 'typ', name: 'typ', tinyname: td[0], fullname: td[1], desc: td[2] })
+    }
+    if (props.name === 'typ') {
+        return TYPTYPE
+    }
     var ctor = CTORS_BY_BASE[props.base] || err('unknown base type: ' + props.base)
-    props.type == null || props.type === 'typ' || (props.type && props.type.name === 'typ') || err('object is not a type object: ' + props.type)
+    props.type == null || props.type === 'typ' || props.type.name === 'typ' || err('object is not a type: ' + props.type)
+    props.type = TYPTYPE
     return new (ctor)(props)
 }
 
@@ -246,14 +284,6 @@ StrType.prototype = extend(Type.prototype, {
     constructor: StrType,
 })
 
-// Type (Type)
-function TypType (props) {
-    Type.call(this, 'typ', props)
-}
-TypType.prototype = extend(Type.prototype, {
-    constructor: TypType,
-})
-
 // False
 function FalType (props) {
     Type.call(this, 'fal', props)
@@ -278,24 +308,12 @@ NulType.prototype = extend(Type.prototype, {
     constructor: NulType,
 })
 
-var CTORS_BY_BASE = {
-    '*': AnyType,
-    arr: ArrType,
-    boo: BooType,
-    blb: BlbType,
-    byt: BytType,
-    dec: DecType,
-    flt: FltType,
-    mul: MulType,
-    int: IntType,
-    num: NumType,
-    obj: ObjType,
-    str: StrType,
-    typ: TypType,
-    fal: FalType,
-    tru: TruType,
-    nul: NulType,
-}
+// note - the calls to create() have to happen *after* the prototype setup above.
+var BASE_CODES = qbobj.map(TYPE_DATA, null, function (k,v) { return v[0].charCodeAt(0) })
+var TYPES_BY_NAME = qbobj.map(TYPE_DATA, null, function (k,v) {return create({base: k, name: k, tinyname: v[0], fullname: v[1], desc: v[2] })})
+var TYPES = Object.keys(TYPES_BY_NAME).map(function (k) { return TYPES_BY_NAME[k] })
+TYPES.sort(function (a,b) { return a.name > b.name ? 1 : -1 })       // names never equal
+
 
 function Prop(tinyname, name, fullname, inherit, type, desc) {
     this.name = name
@@ -345,15 +363,6 @@ var PROPS_BY_NAME = PROPS.reduce(function (m, p) {
     return m
 }, {})
 
-var TYPES = TYPE_DATA.map(function (r) { return create({base: r[1], tinyname: r[0], name: r[1], fullname: r[2], desc: r[3] }) })
-TYPES.sort(function (a,b) { return a.name > b.name ? 1 : -1 })          // names never same so no === compare
-var TYPES_BY_NAME = TYPES.reduce(function (m, t) { m[t.name] = m[t.fullname] = m[t.tinyname] = t; return m }, {})
-
-//  return array of all the base types (new copies) - in name order
-function base_types () {
-    return names().map(function (n) { return lookup(n) })
-}
-
 // return sorted list of names.  name_prop is 'name' (default) 'tinyname' or 'fullname'
 function names (name_prop) {
     return TYPES.map(function (t) { return t[name_prop || 'name'] }).sort()
@@ -363,7 +372,6 @@ function err (msg) { throw Error(msg) }
 
 module.exports = {
     names: names,
-    types: base_types,
     create: create,
     lookup: lookup,
     TYPES_BY_NAME: TYPES_BY_NAME,   // by name, tinyname and fullname
