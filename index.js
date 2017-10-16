@@ -229,25 +229,25 @@ function wildcard_regex(s) {
     return ret
 }
 
-// Object - like record, but has one or more expressions
+// Object - like record, but has one or more pattern-fields (pfields)
 function ObjType (props) {
     Type.call(this, 'obj', props)
     this.fields = props.fields || {}
-    this.expr = props.expr || {}
+    this.pfields = props.pfields || {}      // pattern-fields (with wild-cards)
     // default to any-content object when no fields are given
-    if (Object.keys(this.expr).length === 0 && Object.keys(this.fields).length === 0) {
-        this.expr = {'*':'*'}
+    if (Object.keys(this.pfields).length === 0 && Object.keys(this.fields).length === 0) {
+        this.pfields = {'*':'*'}
     }
 }
 ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
     // return true if fields are simply {'*':'*'}
     is_generic: function () {
-        return Object.keys(this.fields).length === 0 && this.expr['*'] === '*' && Object.keys(this.expr).length === 1
+        return Object.keys(this.fields).length === 0 && this.pfields['*'] === '*' && Object.keys(this.pfields).length === 1
     },
     // return true if this is object has only the wild-card key {'*': some-type}
     has_generic_key: function () {
-        return this.expr['*'] != null && Object.keys(this.fields).length === 0 && Object.keys(this.expr).length === 1
+        return this.pfields['*'] != null && Object.keys(this.fields).length === 0 && Object.keys(this.pfields).length === 1
     },
     fieldtyp: function (n) {
         var t = this.fields[n]
@@ -255,12 +255,12 @@ ObjType.prototype = extend(Type.prototype, {
             return t
         }
 
-        var ekeys = Object.keys(this.expr)
+        var ekeys = Object.keys(this.pfields)
         for (var i=0; i<ekeys.length; i++) {
             var k = ekeys[i]
             var re =  wildcard_regex(k)
             if (re.test(n)) {
-                return this.expr[k]
+                return this.pfields[k]
             }
         }
         return null     // no matching field

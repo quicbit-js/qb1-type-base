@@ -55,11 +55,11 @@ test('lookup', function (t) {
 test('create', function (t) {
     t.table_assert([
         [ 'obj_or_str',                             'exp'  ],
-        [ {base: 'obj', fields: {a:'i'}},           { base: 'obj', fields: { a: 'i' }, expr: {} } ],
-        [ {base: 'obj', expr: {'a*':'i'}},          { base: 'obj', fields: {}, expr: { 'a*': 'i' } } ],
+        [ {base: 'obj', fields: {a:'i'}},           { base: 'obj', fields: { a: 'i' }, pfields: {} } ],
+        [ {base: 'obj', pfields: {'a*':'i'}},       { base: 'obj', fields: {}, pfields: { 'a*': 'i' } } ],
         [ {base:'int'},                             { base: 'int' }],
         [ {base:'int', name: 'foo'},                { base: 'int', name: 'foo' } ],
-        [ {base:'obj', name: 'foo'},                { base: 'obj', name: 'foo', fields: {}, expr: { '*': '*' } }],
+        [ {base:'obj', name: 'foo'},                { base: 'obj', name: 'foo', fields: {}, pfields: { '*': '*' } }],
     ], function (obj_or_str) {
         var t = tbase.create(obj_or_str)
         var ret = qbobj.filter(t, function (k,v) {
@@ -89,12 +89,12 @@ test('create errors', function (t) {
 
 test('fieldtyp', function (t) {
     t.table_assert([
-        [ 'obj',                                                            'field',            'exp' ],
-        [ { base: 'obj', fields: {a:'i'} },                                 'a',                'i' ],
-        [ { base: 'obj', fields: {a:'i'}, expr: {'a*':'n'} },               'a',                'i' ],
-        [ { base: 'obj', fields: {a:'i'}, expr: {'a*':'n'} },               'ba',               null ],
-        [ { base: 'obj', fields: {a:'i'}, expr: {'a*':'n'} },               'ab',               'n' ],
-        [ { base: 'obj', fields: {a:'i'}, expr: {'*a':'n', 'a*': 'o'} },    'ab',     'o' ],
+        [ 'obj',                                                               'field',            'exp' ],
+        [ { base: 'obj', fields: {a:'i'} },                                    'a',                'i' ],
+        [ { base: 'obj', fields: {a:'i'}, pfields: {'a*':'n'} },               'a',                'i' ],
+        [ { base: 'obj', fields: {a:'i'}, pfields: {'a*':'n'} },               'ba',               null ],
+        [ { base: 'obj', fields: {a:'i'}, pfields: {'a*':'n'} },               'ab',               'n' ],
+        [ { base: 'obj', fields: {a:'i'}, pfields: {'*a':'n', 'a*': 'o'} },    'ab',     'o' ],
     ], function (obj, field) {
         return tbase.create(obj).fieldtyp(field)
     })
@@ -104,7 +104,7 @@ test('generic object', function (t) {
     t.table_assert([
         [ 'obj',                                                                'exp' ],
         [ { base: 'obj', fields: {a:'i'} },                                     [ false, false ] ],
-        [ { base: 'obj', expr: {'*':'i'} },                                     [ true , false ] ],
+        [ { base: 'obj', pfields: {'*':'i'} },                                  [ true , false ] ],
         [ { base: 'obj' },                                                      [ true , true ] ],
     ], function (obj) {
         var t = tbase.create(obj)
