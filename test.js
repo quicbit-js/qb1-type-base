@@ -21,10 +21,11 @@ var tbase = require('.')
 test('props', function (t) {
     t.table_assert([
         [ 'name',           'exp' ],
-        [ 'type',            { n: 'type', tn: 't', fn: 'type', inherit: 'YES_EQL' } ],
+        [ 'type',           { n: 'type', tn: 't', fn: 'type' } ],
+        [ 'arr',            { n: 'arr', tn: 'a', fn: 'array' } ],
     ], function (name) {
         var p = tbase.PROPS_BY_NAME[name]
-        return { n: p.name, tn: p.tinyname, fn: p.fullname, inherit: p.inherit }
+        return { n: p.name, tn: p.tinyname, fn: p.fullname }
     } )
 })
 
@@ -41,7 +42,9 @@ test('names', function (t) {
 test('lookup', function (t) {
     t.table_assert([
         [ 'name',                                   'exp' ],
+        [ 's',                                      { name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
         [ 'str',                                    { name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
+        [ 'string',                                 { name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
         [ 'typ',                                    { name: 'typ', tinyname: 't', fullname: 'type', base: 'typ' } ],
     ], function (name) {
         var t = tbase.lookup(name)
@@ -112,8 +115,8 @@ test('generic object', function (t) {
 test('generic array', function (t) {
     t.table_assert([
         [ 'obj',                                                                'exp' ],
-        [ { base: 'arr', items: ['*', 'i'] },                                   false ],
-        [ { base: 'arr', items: ['*'] },                                        true ],
+        [ { base: 'arr', array: ['*', 'i'] },                                   false ],
+        [ { base: 'arr', array: ['*'] },                                        true ],
     ], function (obj) {
         var t = tbase.create(obj)
         return t.is_generic()

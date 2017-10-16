@@ -130,7 +130,7 @@ function create (props) {
 }
 
 function lookup (name) {
-    return TYPES_BY_NAME[name]
+    return TYPES_BY_ALL_NAMES[name]
 }
 
 // Any
@@ -144,11 +144,11 @@ AnyType.prototype = extend(Type.prototype, {
 // Array
 function ArrType (props) {
     Type.call(this, 'arr', props)
-    this.items = props.items || ['*']
+    this.array = props.array || ['*']
 }
 ArrType.prototype = extend(Type.prototype, {
     constructor: ArrType,
-    is_generic: function () { return this.items.length == 1 && this.items[0] === '*' }
+    is_generic: function () { return this.array.length == 1 && this.array[0] === '*' }
 })
 
 // Blob
@@ -243,20 +243,11 @@ ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
     // return true if fields are simply {'*':'*'}
     is_generic: function () {
-        if (Object.keys(this.fields).length === 0) {
-            return this.expr['*'] === '*' && Object.keys(this.expr).length === 1
-        } else {
-            return false
-        }
+        return Object.keys(this.fields).length === 0 && this.expr['*'] === '*' && Object.keys(this.expr).length === 1
     },
     // return true if this is object has only the wild-card key {'*': some-type}
     has_generic_key: function () {
-        if (Object.keys(this.fields).length === 0) {
-            var ekeys = Object.keys(this.expr)
-            return ekeys.length === 1 && ekeys[0] === '*'
-        } else {
-            return false
-        }
+        return this.expr['*'] != null && Object.keys(this.fields).length === 0 && Object.keys(this.expr).length === 1
     },
     fieldtyp: function (n) {
         var t = this.fields[n]
@@ -312,51 +303,45 @@ NulType.prototype = extend(Type.prototype, {
 var BASE_CODES = qbobj.map(TYPE_DATA, null, function (k,v) { return v[0].charCodeAt(0) })
 var TYPES_BY_NAME = qbobj.map(TYPE_DATA, null, function (k,v) {return create({base: k, name: k, tinyname: v[0], fullname: v[1], desc: v[2] })})
 var TYPES = Object.keys(TYPES_BY_NAME).map(function (k) { return TYPES_BY_NAME[k] })
+var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
 TYPES.sort(function (a,b) { return a.name > b.name ? 1 : -1 })       // names never equal
 
 
-function Prop(tinyname, name, fullname, inherit, type, desc) {
+function Prop(tinyname, name, fullname, type, desc) {
     this.name = name
     this.tinyname = tinyname || name
     this.fullname = fullname || name
     this.desc = desc
-    this.inherit = inherit
     this.type = type
 }
 Prop.prototype = {
     constructor: Prop,
 }
 
-// These are the user-facing property names and descriptoins for types.  The internal Type object, above,
-// keeps a normalized version of the user-facing form for reference and adds other derived
-// properties, but keep in mind that these object properties fully describe a given object and
-// the internal properties are derived for convenience or performance.
+// Type property information including whether they are user-facing and how they are merged.
 
-// type inherit flags (child-to-container inheritance):
+// type inherit flags (inheriting properties from a base type):
 //
 //      YES_EQL   - inherited. if both are set they must be equal
 //      NO_NEQ    - not inherited.  if both are set they must not be equal
 //      NO        - not inherited.  value is ignored.
-//      YES_VAL   - inherited according to the value rules specified by the inherit property (these rules)
 //      YES_MRG   - inherit/merge.  result will be a subset of the container and child value (intersection of constraints)
 var PROPS =
     [
-        // tinyname     name            fullname        inherit,    type            description
-        [ 't',         'type',          null,           'YES_EQL',  's|o',          'Describes the type / structure / form of the value'  ],
-        [ 'n',         'name',          null,           'NO_NEQ',   's',            'A concise name of a type name or property such as "int" or "arr" or "typ"' ],
-        [ 'd',         'desc',          'description',  'NO',       's|N',          'A description of a type or property' ],
-        [ 's',         'stip',          'stipulations', 'YES_MRG',  '{s:s|r}|N',    'Stipulations for write validation'  ],
-        [ 'b',         'base',          null,           'YES_EQL',  '*',            'Basic type that this type is based upon (integer, string, object, record...)'  ],
-        [ null,        'code',          null,           'NO',       'n',            'Basic type that this type is based upon (integer, string, object, record...)'  ],
-        [ 'v',         'value',         null,           'YES_VAL',  '*',            'Value matching the type'  ],
-        [ null,        'items',         null,           'YES_MRG',  '[t]',          'Array types'  ],
-        [ null,        'fields',        null,           'YES_MRG',  '{*:t}',        'Object field types'  ],
-        [ null,        'expr',         'expressions',   'MRG',      '{*:t}',        'Object field types covering a range of fields via expressions'  ],
-        [ 'tn',        'tinyname',      null,           'NO_NEQ',   's|N',          'The tiny name of a name or property such as "i" or "a" which are defined only for the most common properties and types'  ],
-        [ 'fn',        'fullname',      null,           'NO_NEQ',   's|N',          'The full name of a type or property such as "description", "integer" or "array"'  ],
-    ].map(function (r) { return new Prop(r[0], r[1], r[2], r[3], r[4], r[5]) } )
+        // tinyname     name            fullname        type            description
+        [ 't',         'type',          null,           's|o',          'Describes the type / structure / form of the value'  ],
+        [ 'v',         'value',         null,           '*',            'Value adhering to the type definition'  ],
+        [ 'n',         'name',          null,           's',            'A concise name of the type such as "int" or "arr" or "typ"' ],
+        [ 'd',         'desc',          'description',  's|N',          'A description of the type' ],
+        [ 's',         'stip',          'stipulations', '{s:s|r}|N',    'Stipulations for write validation'  ],
+        [ 'tn',        'tinyname',      null,           's|N',          'The tiny name of a type or property such as "i" or "a" which are defined only for the most common types'  ],
+        [ 'fn',        'fullname',      null,           's|N',          'The full name of a type or property such as "description", "integer" or "array"'  ],
+        [ 'm',         'mul',           'multi',        '[t]',          'Array of possible types for a multi-type'  ],
+        [ 'a',         'arr',           'array',        '[t]',          'Cycle of array types allowed in an array'  ],
+        [ null,        'base',          null,           '*',            'Type that the type is based upon / derived from (integer, string, object, array...)'  ],
+    ].map(function (r) { return new Prop(r[0], r[1], r[2], r[3], r[4]) } )
 
-var PROPS_BY_NAME = PROPS.reduce(function (m, p) {
+var PROPS_BY_ALL_NAMES = PROPS.reduce(function (m, p) {
     m[p.name] = p
     m[p.tinyname] = p
     m[p.fullname] = p
@@ -374,7 +359,7 @@ module.exports = {
     names: names,
     create: create,
     lookup: lookup,
-    TYPES_BY_NAME: TYPES_BY_NAME,   // by name, tinyname and fullname
-    PROPS_BY_NAME: PROPS_BY_NAME,   // by name, tinyname and fullname
+    TYPES_BY_NAME: TYPES_BY_ALL_NAMES,   // by name, tinyname and fullname
+    PROPS_BY_NAME: PROPS_BY_ALL_NAMES,   // by name, tinyname and fullname
     CODES: BASE_CODES,
 }
