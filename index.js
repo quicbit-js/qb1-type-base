@@ -166,7 +166,9 @@ ArrType.prototype = extend(Type.prototype, {
         } else {
             var ret = Type.prototype._basic_obj.call(this)
             delete ret.$base
-            var arrtypes = this.array.map(function (t) { return t._obj(opt, depth + 1) })
+            var arrtypes = this.array.map(function (t) {
+                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // handle string references
+            })
             if (Object.keys(ret).length === 0) {
                 // a vanilla array with $base: 'arr', $array: [...]
                 return arrtypes
@@ -231,7 +233,9 @@ MulType.prototype = extend(Type.prototype, {
         }
         var ret = Type.prototype._basic_obj.call(this)
         delete ret.$base
-        ret.$multi = this.multi.map(function (t) { return t._obj(opt, depth + 1) })
+        ret.$multi = this.multi.map(function (t) {
+            return (typeof t === 'string') ? t : t._obj(opt, depth + 1)     // handle string references
+        })
         return ret
     }
 })
@@ -309,12 +313,12 @@ ObjType.prototype = extend(Type.prototype, {
         delete ret.$base     // default is 'obj'
         if (Object.keys(this.fields).length) {
             qbobj.map(this.fields, null, function (k, t) {
-                return t._obj(opt, depth + 1)
+                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // handle string references
             }, { init: ret })
         }
         if (Object.keys(this.pfields).length) {
             qbobj.map(this.pfields, null, function (k, t) {
-                return t._obj(opt, depth + 1)
+                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // handle string references
             }, { init: ret })
         }
         return ret
@@ -373,8 +377,8 @@ var TYPES_BY_NAME = {
     typ: TYP,
 }
 var TYPES = Object.keys(TYPES_BY_NAME).map(function (k) { return TYPES_BY_NAME[k] })
-var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
 TYPES.sort(function (a,b) { return a.name > b.name ? 1 : -1 })       // names never equal
+var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
 
 function Prop(tinyname, name, fullname, type, desc) {
     this.name = name
@@ -407,28 +411,14 @@ var PROPS =
         [ 'fn',        'fullname',      null,           's|N',          'The full name of a type or property such as "description", "integer" or "array"'  ],
         [ 'm',         'mul',           'multi',        '[t]',          'Array of possible types for a multi-type'  ],
         [ 'a',         'arr',           'array',        '[t]',          'Cycle of array types allowed in an array'  ],
-        [ null,        'base',          null,           '*',            'Type that the type is based upon / derived from (integer, string, object, array...)'  ],
-    ].map(function (r) { return new Prop(r[0], r[1], r[2], r[3], r[4]) } )
-
-var PROPS_BY_ALL_NAMES = PROPS.reduce(function (m, p) {
-    m[p.name] = p
-    m[p.tinyname] = p
-    m[p.fullname] = p
-    return m
-}, {})
-
-// return sorted list of names.  name_prop is 'name' (default) 'tinyname' or 'fullname'
-function names (name_prop) {
-    return TYPES.map(function (t) { return t[name_prop || 'name'] }).sort()
-}
+        [ 'b',         'base',          null,           '*',            'Type that the type is based upon / derived from (integer, string, object, array...)'  ],
+    ].map(function (r) { return new Prop(r[0], r[1], r[2], r[3], r[4]) } ).sort(function (a,b) { return a.name > b.name ? 1 : -1 })
 
 function err (msg) { throw Error(msg) }
 
 module.exports = {
-    names: names,
     create: create,
     lookup: lookup,
-    TYPES_BY_NAME: TYPES_BY_ALL_NAMES,   // by name, tinyname and fullname
-    PROPS_BY_NAME: PROPS_BY_ALL_NAMES,   // by name, tinyname and fullname
-    CODES: BASE_CODES,
+    props: function () { return PROPS },
+    types: function () { return TYPES },
 }
