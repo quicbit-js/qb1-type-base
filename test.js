@@ -55,8 +55,8 @@ test('lookup', function (t) {
 test('create errors', function (t) {
     t.table_assert([
         [ 'create',                             'exp'  ],
-        [ null,                                 /Cannot read property/ ],
         [ {base: 'foo' },                       /unknown base/ ],
+        [ {base: 'nul'},                        /not a creatable type/ ],
         [ {base: 'int', tinyname: 'foo' },      /tinyname without name/ ],
         [ {base: 'int', fullname: 'foo' },      /fullname without name/ ],
     ], tbase.create, { assert: 'throws' })

@@ -128,7 +128,14 @@ Type.prototype = {
 }
 
 function create (props) {
-    var ctor = CTORS_BY_BASE[props.base] || err('unknown base type: ' + props.base)
+    var ctor = CTORS_BY_BASE[props.base]
+    if (ctor == null) {
+        if (lookup(props.base)) {
+            err('type ' + props.base + ' is not a creatable type - try using lookup instead')
+        } else {
+            err('unknown base type: ' + props.base)
+        }
+    }
     return new (ctor)(props)
 }
 
