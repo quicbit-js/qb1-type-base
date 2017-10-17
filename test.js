@@ -32,10 +32,10 @@ test('props', function (t) {
 test('names', function (t) {
     t.table_assert([
         [ 'name_prop',            'exp' ],
-        [ 'tinyname',       [ '*', 'F', 'N', 'T', 'X', 'a', 'b', 'd', 'f', 'i', 'm', 'n', 'o', 's', 't', 'x' ] ],
-        [ 'name',           [ '*', 'arr', 'blb', 'boo', 'byt', 'dec', 'fal', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'tru', 'typ' ] ],
-        [ null  ,           [ '*', 'arr', 'blb', 'boo', 'byt', 'dec', 'fal', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'tru', 'typ' ] ],
-        [ 'fullname',       [ 'any', 'array', 'blob', 'boolean', 'byte', 'decimal', 'false', 'float', 'integer', 'multi', 'null', 'number', 'object', 'string', 'true', 'type' ] ],
+        [ 'tinyname',       [ '*', 'N', 'X', 'a', 'b', 'd', 'f', 'i', 'm', 'n', 'o', 's', 't', 'x' ] ],
+        [ 'name',           [ '*', 'arr', 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'typ' ] ],
+        [ null  ,           [ '*', 'arr', 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'typ' ] ],
+        [ 'fullname',       [ 'any', 'array', 'blob', 'boolean', 'byte', 'decimal', 'float', 'integer', 'multi', 'null', 'number', 'object', 'string', 'type' ] ],
     ], function(name_prop) { return tbase.names(name_prop) })
 })
 
@@ -81,7 +81,6 @@ test('create errors', function (t) {
         [ 'create',                             'exp'  ],
         [ null,                                 /Cannot read property/ ],
         [ {base: 'foo' },                       /unknown base/ ],
-        [ {base: 'obj', type: 'foo' },          /not a type/ ],
         [ {base: 'int', tinyname: 'foo' },      /tinyname without name/ ],
         [ {base: 'int', fullname: 'foo' },      /fullname without name/ ],
     ], tbase.create, { assert: 'throws' })
@@ -132,5 +131,28 @@ test('toString', function (t) {
     ], function (args) {
         var t = typeof args === 'string' ? tbase.lookup(args) : tbase.create(args)
         return t.toString()
+    })
+})
+
+test.only('obj', function (t) {
+    var str = tbase.lookup('str')
+    var str_arr = tbase.create({base: 'arr', array: [ str ]})
+    var my_str_arr = tbase.create({base: 'arr', name: 'my_str_arr', array: [ str ]})
+    t.table_assert([
+        [ 'props',                                   'opt',               'exp'  ],
+        [ 'str',                                   null,                { $base: 'str', $name: 'str', $desc: 'A string of unicode characters (code points in range 0..1114111)', $tinyname: 's', $fullname: 'string' } ],
+        [ {base: 'arr', array: [ str ]},           null,                [ 'str' ] ],
+        [ {base: 'obj', fields: { a: str_arr } },  null,                { a: [ 'str' ] } ],
+        [ {base: 'obj', fields: { a: str_arr } },  {name_depth:0},      { a: [ 'str' ] } ],
+        [ {base: 'obj', fields: { a: str_arr } },  {name_depth:0},      { a: [ 'str' ] } ],
+        [ {base: 'obj', fields: { a: str_arr } },  {name_depth:1},      { a: [ 'str' ] } ],
+        [ {base: 'obj', fields: { a: str_arr } },  {name_depth:2},      { a: [ 'str' ] } ],
+        [ {name: 'foo', base: 'obj', fields: { a: my_str_arr } },   {name_depth:0},      'foo' ],
+        [ {name: 'foo', base: 'obj', fields: { a: my_str_arr } },   {name_depth:1},      { $name: 'foo', a: 'my_str_arr' } ],
+        [ {name: 'foo', base: 'obj', fields: { a: my_str_arr } },   {name_depth:2},      { $name: 'foo', a: { $name: 'my_str_arr', $array: [ 'str' ] } } ],
+        [ {name: 'foo', base: 'obj', fields: { a: str_arr } },      {name_depth:1},      { $name: 'foo', a: [ 'str' ] } ],
+    ], function (props, opt) {
+        var t = typeof props === 'string' ? tbase.lookup(props) : tbase.create(props)
+        return t.obj(opt)
     })
 })
