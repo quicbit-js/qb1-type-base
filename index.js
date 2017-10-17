@@ -43,7 +43,7 @@ function type_props (name) {
 }
 
 // the types 'any', 'typ' and 'nul' are not in this list because they are only constructed once (derivative types don't exist for them)
-var CTORS_BY_BASE = {
+var PUBLIC_CONSTRUCTORS = {
     arr: ArrType,
     boo: BooType,
     blb: BlbType,
@@ -128,22 +128,6 @@ Type.prototype = {
     }
 }
 
-function create (props) {
-    var ctor = CTORS_BY_BASE[props.base]
-    if (ctor == null) {
-        if (lookup(props.base)) {
-            err('type ' + props.base + ' is not a creatable type - try using lookup instead')
-        } else {
-            err('unknown base type: ' + props.base)
-        }
-    }
-    return new (ctor)(props)
-}
-
-function lookup (name) {
-    return TYPES_BY_ALL_NAMES[name]
-}
-
 // Any
 function AnyType (props) {
     Type.call(this, '*', props)
@@ -155,14 +139,15 @@ AnyType.prototype = extend(Type.prototype, {
 // Array
 function ArrType (props) {
     Type.call(this, 'arr', props)
-    this.array = props.array || [ANY]
+    props.array && props.array.length || err('cannot define an array type with zero items')
+    this.array = props.array.length === 1 && props.array[0] === ANY ? ANY_ARR : props.array
 }
 ArrType.prototype = extend(Type.prototype, {
     constructor: ArrType,
-    is_generic: function () { return this.array.length == 1 && this.array[0] === ANY },
+    is_generic: function () { return this.array === ANY_ARR },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
-            return this.name === 'arr' ? [] : this.name
+            return this.name === 'arr' ? [] : this.name     // 'arr' is the base-type
         } else {
             var ret = Type.prototype._basic_obj.call(this)
             delete ret.$base
@@ -273,17 +258,17 @@ function wildcard_regex(s) {
 function ObjType (props) {
     Type.call(this, 'obj', props)
     this.fields = props.fields || {}
-    this.pfields = props.pfields || {}      // pattern-fields (with wild-cards)
-    // default to any-content object when no fields are given
-    if (Object.keys(this.pfields).length === 0 && Object.keys(this.fields).length === 0) {
-        this.pfields = {'*': ANY}
+    this.pfields = props.pfields || {}
+    ;(Object.keys(this.fields).length) || (Object.keys(this.pfields).length) || err('no fields given for object')
+    if (this.pfields['*'] === ANY && Object.keys(this.pfields).length === 1) {
+        this.pfields = ANY_FIELD                     // make generic checks fast by using same instance
     }
 }
 ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
     // return true if fields are simply {'*':'*'}
     is_generic: function () {
-        return Object.keys(this.fields).length === 0 && this.pfields['*'] === ANY && Object.keys(this.pfields).length === 1
+        return this.pfields === ANY_FIELD && Object.keys(this.fields).length === 0
     },
     // return true if this is object has only the wild-card key {'*': some-type}
     has_generic_key: function () {
@@ -359,10 +344,14 @@ var BASE_CODES = qbobj.map(TYPE_DATA,  null, function (k, v) { return v[0].charC
 var NUL = new NulType(type_props('nul'))
 var TYP = new TypType(type_props('typ'))
 var ANY = new AnyType(type_props('*'))
+var ANY_FIELD = {'*': ANY}
+var ANY_ARR = [ANY]
 
+// single instances of the base types available via the lookup() function.  These have base === name, which is
+// not possible types created (using create())
 var TYPES_BY_NAME = {
     '*': ANY,
-    arr: new ArrType(type_props('arr')),
+    arr: new ArrType(assign(type_props('arr'), {array: ANY_ARR})),
     boo: new BooType(type_props('boo')),
     blb: new BlbType(type_props('blb')),
     byt: new BytType(type_props('byt')),
@@ -372,7 +361,7 @@ var TYPES_BY_NAME = {
     int: new IntType(type_props('int')),
     nul: NUL,
     num: new NumType(type_props('num')),
-    obj: new ObjType(type_props('obj')),
+    obj: new ObjType(assign(type_props('obj'), {pfields: ANY_FIELD})),
     str: new StrType(type_props('str')),
     typ: TYP,
 }
@@ -413,6 +402,24 @@ var PROPS =
         [ 'a',         'arr',           'array',        '[t]',          'Cycle of array types allowed in an array'  ],
         [ 'b',         'base',          null,           '*',            'Type that the type is based upon / derived from (integer, string, object, array...)'  ],
     ].map(function (r) { return new Prop(r[0], r[1], r[2], r[3], r[4]) } ).sort(function (a,b) { return a.name > b.name ? 1 : -1 })
+
+function create (props) {
+    var ctor = PUBLIC_CONSTRUCTORS[props.base]
+    if (ctor == null) {
+        if (lookup(props.base)) {
+            err('type ' + props.base + ' is not a creatable type - try using lookup instead')
+        } else {
+            err('unknown base type: ' + props.base)
+        }
+    }
+    props.name !== props.base || err('cannot redefine a base type: ' + props.name)
+
+    return new (ctor)(props)
+}
+
+function lookup (name) {
+    return TYPES_BY_ALL_NAMES[name]
+}
 
 function err (msg) { throw Error(msg) }
 

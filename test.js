@@ -76,14 +76,15 @@ test('fieldtyp', function (t) {
 
 test('generic object', function (t) {
     var int = tbase.lookup('int')
+    var any = tbase.lookup('any')
     t.table_assert([
-        [ 'obj',                                                                'exp' ],
-        [ { base: 'obj', fields: {a:int} },                                     [ false, false ] ],
-        [ { base: 'obj', fields: {a:int}, pfields: {'a*': int} },               [ false, false ] ],
+        [ 'str_or_props',                                                        'exp' ],
+        [ 'obj',                                                                [ true, true ] ],
+        [ { base: 'obj', pfields: {'*':any} },                                  [ true , true ] ],
         [ { base: 'obj', pfields: {'*':int} },                                  [ true , false ] ],
-        [ { base: 'obj' },                                                      [ true , true ] ],
-    ], function (obj) {
-        var t = tbase.create(obj)
+        [ { base: 'obj', fields: {a:int}, pfields: {'a*': int} },               [ false, false ] ],
+    ], function (str_or_props) {
+        var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
         return [t.has_generic_key(), t.is_generic()]
     })
 })
@@ -92,11 +93,12 @@ test('generic array', function (t) {
     var any = tbase.lookup('*')
     var int = tbase.lookup('i')
     t.table_assert([
-        [ 'obj',                                                                'exp' ],
-        [ { base: 'arr', array: [any, int] },                                   false ],
+        [ 'str_or_props',                                                       'exp' ],
+        [ 'obj',                                                                true ],
         [ { base: 'arr', array: [any] },                                        true ],
-    ], function (obj) {
-        var t = tbase.create(obj)
+        [ { base: 'arr', array: [any, int] },                                   false ],
+    ], function (str_or_props) {
+        var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
         return t.is_generic()
     })
 })
@@ -126,6 +128,7 @@ test('toString', function (t) {
 })
 
 test('create() and obj()', function (t) {
+    var any = tbase.lookup('any')
     var all_types = tbase.types()
     var int = tbase.lookup('int')
     var arr = tbase.lookup('arr')
@@ -144,6 +147,8 @@ test('create() and obj()', function (t) {
         [ 'arr',                                                    null,               { $name: 'arr', $desc: 'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]', $tinyname: 'a', $fullname: 'array', $array: [ '*' ] } ],
         [ 'obj',                                                    null,               { $name: 'obj', $desc: 'A record-like object with fixed field names, or flexible fields (using *-expressions)', $tinyname: 'o', $fullname: 'object', '*': '*' } ],
         [ {base: 'obj', fields: {a: arr}},                          null,               { a: [] } ],
+        [ {base: 'obj', pfields: {'*':any}},                        null,               {'*':'*'} ],        // custom object has this different look from base type '{}' - though functionally the same.
+        [ {base: 'arr', array: ['*']},                              null,               ['*'] ],            // custom array has this different look from base type '[]' - though functionally the same.
         [ {base: 'int'},                                            null,               { $base: 'int' }],
         [ int_arr,                                                  null,               [ 'int' ] ],
         [ {base: 'arr', array: [int_arr]},                          null,               [ ['int'] ] ],
