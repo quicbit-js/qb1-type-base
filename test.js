@@ -52,30 +52,6 @@ test('lookup', function (t) {
     })
 })
 
-test('create', function (t) {
-    t.table_assert([
-        [ 'obj_or_str',                             'exp'  ],
-        [ {base: 'obj', fields: {a:'i'}},           { base: 'obj', fields: { a: 'i' }, pfields: {} } ],
-        [ {base: 'obj', pfields: {'a*':'i'}},       { base: 'obj', fields: {}, pfields: { 'a*': 'i' } } ],
-        [ {base:'int'},                             { base: 'int' }],
-        [ {base:'int', name: 'foo'},                { base: 'int', name: 'foo' } ],
-        [ {base:'obj', name: 'foo'},                { base: 'obj', name: 'foo', fields: {}, pfields: { '*': '*' } }],
-    ], function (obj_or_str) {
-        var t = tbase.create(obj_or_str)
-        var ret = qbobj.filter(t, function (k,v) {
-            return v != null && ! {
-                type: 1,
-                desc: 1,
-                fullname: 1,
-                tinyname: 1,
-                stip: 1,
-                code: 1,
-            }[k]
-        })
-        return ret
-    })
-})
-
 test('create errors', function (t) {
     t.table_assert([
         [ 'create',                             'exp'  ],
@@ -100,10 +76,12 @@ test('fieldtyp', function (t) {
 })
 
 test('generic object', function (t) {
+    var int = tbase.lookup('int')
     t.table_assert([
         [ 'obj',                                                                'exp' ],
-        [ { base: 'obj', fields: {a:'i'} },                                     [ false, false ] ],
-        [ { base: 'obj', pfields: {'*':'i'} },                                  [ true , false ] ],
+        [ { base: 'obj', fields: {a:int} },                                     [ false, false ] ],
+        [ { base: 'obj', fields: {a:int}, pfields: {'a*': int} },               [ false, false ] ],
+        [ { base: 'obj', pfields: {'*':int} },                                  [ true , false ] ],
         [ { base: 'obj' },                                                      [ true , true ] ],
     ], function (obj) {
         var t = tbase.create(obj)
@@ -112,10 +90,12 @@ test('generic object', function (t) {
 })
 
 test('generic array', function (t) {
+    var any = tbase.lookup('*')
+    var int = tbase.lookup('i')
     t.table_assert([
         [ 'obj',                                                                'exp' ],
-        [ { base: 'arr', array: ['*', 'i'] },                                   false ],
-        [ { base: 'arr', array: ['*'] },                                        true ],
+        [ { base: 'arr', array: [any, int] },                                   false ],
+        [ { base: 'arr', array: [any] },                                        true ],
     ], function (obj) {
         var t = tbase.create(obj)
         return t.is_generic()
@@ -134,23 +114,30 @@ test('toString', function (t) {
     })
 })
 
-test.only('obj', function (t) {
+test('create and obj', function (t) {
     var str = tbase.lookup('str')
+    var int = tbase.lookup('int')
     var str_arr = tbase.create({base: 'arr', array: [ str ]})
+    var int_arr = tbase.create({base: 'arr', array: [ int ]})
     var my_str_arr = tbase.create({base: 'arr', name: 'my_str_arr', array: [ str ]})
     t.table_assert([
-        [ 'props',                                   'opt',               'exp'  ],
-        [ 'str',                                   null,                { $base: 'str', $name: 'str', $desc: 'A string of unicode characters (code points in range 0..1114111)', $tinyname: 's', $fullname: 'string' } ],
-        [ {base: 'arr', array: [ str ]},           null,                [ 'str' ] ],
-        [ {base: 'obj', fields: { a: str_arr } },  null,                { a: [ 'str' ] } ],
-        [ {base: 'obj', fields: { a: str_arr } },  {name_depth:0},      { a: [ 'str' ] } ],
-        [ {base: 'obj', fields: { a: str_arr } },  {name_depth:0},      { a: [ 'str' ] } ],
-        [ {base: 'obj', fields: { a: str_arr } },  {name_depth:1},      { a: [ 'str' ] } ],
-        [ {base: 'obj', fields: { a: str_arr } },  {name_depth:2},      { a: [ 'str' ] } ],
-        [ {name: 'foo', base: 'obj', fields: { a: my_str_arr } },   {name_depth:0},      'foo' ],
-        [ {name: 'foo', base: 'obj', fields: { a: my_str_arr } },   {name_depth:1},      { $name: 'foo', a: 'my_str_arr' } ],
-        [ {name: 'foo', base: 'obj', fields: { a: my_str_arr } },   {name_depth:2},      { $name: 'foo', a: { $name: 'my_str_arr', $array: [ 'str' ] } } ],
-        [ {name: 'foo', base: 'obj', fields: { a: str_arr } },      {name_depth:1},      { $name: 'foo', a: [ 'str' ] } ],
+        [ 'props',                                                  'opt',              'exp'  ],
+        [ 'str',                                                    null,               { $base: 'str', $name: 'str', $desc: 'A string of unicode characters (code points in range 0..1114111)', $tinyname: 's', $fullname: 'string' } ],
+        [ 'int',                                                    null,               { $base: 'int', $name: 'int', $desc: 'An unbounded integer (range ..)', $tinyname: 'i', $fullname: 'integer' }   ],
+        [ {base: 'int'},                                            null,               { $base: 'int' }],
+        [ {base: 'int', name: 'foo'},                               null,               { $base: 'int', $name: 'foo' } ],
+        [ {base: 'obj', fields: {a:int}},                           null,               { a: 'int' } ],
+        [ {base: 'obj', pfields: {'a*':int}},                       null,               { 'a*': 'int' } ],
+        [ {base: 'arr', array: [ str ]},                            null,               [ 'str' ] ],
+        [ {base: 'obj', fields: { a: str_arr } },                   null,               { a: [ 'str' ] } ],
+        [ {base: 'obj', fields: { a: str_arr } },                   {name_depth:0},     { a: [ 'str' ] } ],
+        [ {base: 'obj', fields: { a: str_arr } },                   {name_depth:0},     { a: [ 'str' ] } ],
+        [ {base: 'obj', fields: { a: str_arr } },                   {name_depth:1},     { a: [ 'str' ] } ],
+        [ {base: 'obj', fields: { a: str_arr } },                   {name_depth:2},     { a: [ 'str' ] } ],
+        [ {name: 'foo', base: 'obj', fields: { a: my_str_arr } },   {name_depth:0},     'foo' ],
+        [ {name: 'foo', base: 'obj', fields: { a: my_str_arr } },   {name_depth:1},     { $name: 'foo', a: 'my_str_arr' } ],
+        [ {name: 'foo', base: 'obj', fields: { a: my_str_arr } },   {name_depth:2},     { $name: 'foo', a: { $name: 'my_str_arr', $array: [ 'str' ] } } ],
+        [ {name: 'foo', base: 'obj', fields: { a: str_arr } },      {name_depth:1},     { $name: 'foo', a: [ 'str' ] } ],
     ], function (props, opt) {
         var t = typeof props === 'string' ? tbase.lookup(props) : tbase.create(props)
         return t.obj(opt)
