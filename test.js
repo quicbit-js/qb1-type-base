@@ -103,11 +103,23 @@ test('generic array', function (t) {
 })
 
 test('toString', function (t) {
+    var int = tbase.lookup('int')
+    var myint = tbase.create({base:'int', name:'myint'})
+    var anyint = tbase.create({base: 'mul', multi: [int, myint]})
+    var arr_int = tbase.create({base: 'arr', array:[int]})
+    var arr_myint = tbase.create({base: 'arr', array:[myint]})
+    var arr_anyint = tbase.create({base: 'arr', array:[anyint]})
     t.table_assert([
-        [ 'args',                               'exp'  ],
-        [ 'str',                                'str' ],
-        [ {base:'str'},                         'unnamed' ],
-        [ {base:'str', name: 'i'},              'i' ],
+        [ 'args',                                           'exp'  ],
+        [ 'str',                                            'str' ],
+        [ 'int',                                            'int' ],
+        [ arr_int,                                          '["int"]' ],
+        [ arr_myint,                                        '["myint"]'],
+        [ arr_anyint,                                       '[{"$multi":["int","myint"]}]'],
+        [ {base:'obj', pfields:{'s*':arr_anyint}},          '{"s*":[{"$multi":["int","myint"]}]}' ],
+        [ {base:'str'},                                     '{"$base":"str"}' ],
+        [ {base:'str', name: 'i'},                          'i' ],
+
     ], function (args) {
         var t = typeof args === 'string' ? tbase.lookup(args) : tbase.create(args)
         return t.toString()
@@ -134,6 +146,7 @@ test('create and obj', function (t) {
         [ {base: 'obj', fields: { a: str_arr } },                   {name_depth:0},     { a: [ 'str' ] } ],
         [ {base: 'obj', fields: { a: str_arr } },                   {name_depth:1},     { a: [ 'str' ] } ],
         [ {base: 'obj', fields: { a: str_arr } },                   {name_depth:2},     { a: [ 'str' ] } ],
+        [ {base: 'obj', fields: { a: int_arr } },                   {name_depth:2},     { a: [ 'int' ] } ],
         [ {name: 'foo', base: 'obj', fields: { a: my_str_arr } },   {name_depth:0},     'foo' ],
         [ {name: 'foo', base: 'obj', fields: { a: my_str_arr } },   {name_depth:1},     { $name: 'foo', a: 'my_str_arr' } ],
         [ {name: 'foo', base: 'obj', fields: { a: my_str_arr } },   {name_depth:2},     { $name: 'foo', a: { $name: 'my_str_arr', $array: [ 'str' ] } } ],

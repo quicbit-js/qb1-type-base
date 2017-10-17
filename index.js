@@ -100,7 +100,8 @@ function Type (base, props) {
 Type.prototype = {
     constructor: Type,
     toString: function () {
-        return this.name || 'unnamed'
+        if (this.name) { return this.name }
+        return JSON.stringify(this.obj())
     },
     _basic_obj: function () {
         var ret = qbobj.map(this,
@@ -159,10 +160,6 @@ function ArrType (props) {
 ArrType.prototype = extend(Type.prototype, {
     constructor: ArrType,
     is_generic: function () { return this.array.length == 1 && this.array[0] === ANY },
-    toString: function () {
-        var items = this.array.map(function (t) { return t.toString() })
-        return '[' + items.length ? items.join(', ') : '' + ']'
-    },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
             return this.name
@@ -228,15 +225,12 @@ function MulType (props) {
 }
 MulType.prototype = extend(Type.prototype, {
     constructor: MulType,
-    toString: function () {
-        var items = this.multi.map(function (t) { return t.toString() })
-        return '[' + items.length ? items.join('|') : '' + ']'
-    },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
             return this.name
         }
         var ret = Type.prototype._basic_obj.call(this)
+        delete ret.$base
         ret.$multi = this.multi.map(function (t) { return t._obj(opt, depth + 1) })
         return ret
     }
@@ -306,20 +300,6 @@ ObjType.prototype = extend(Type.prototype, {
             }
         }
         return null     // no matching field
-    },
-    toString: function () {
-        var pairs = []
-        var fields = this.fields
-        var fkeys = Object.keys(fields)
-        fkeys.forEach(function (k) {
-            pairs.push(k + ': ' + fields[k].toString())
-        })
-        var pfields = this.pfields
-        var pfkeys = Object.keys(pfields)
-        pfields.forEach(function (k) {
-            pairs.push(k + ': ' + pfields[k].toString())
-        })
-        return '{ ' + pairs.join(', ') + '}'
     },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
