@@ -162,7 +162,7 @@ ArrType.prototype = extend(Type.prototype, {
     is_generic: function () { return this.array.length == 1 && this.array[0] === ANY },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
-            return this.name
+            return this.name === 'arr' ? [] : this.name
         } else {
             var ret = Type.prototype._basic_obj.call(this)
             delete ret.$base
@@ -307,7 +307,7 @@ ObjType.prototype = extend(Type.prototype, {
     },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
-            return this.name
+            return this.name === 'obj' ? {} : this.name
         }
         var ret = Type.prototype._basic_obj.call(this)
         delete ret.$base     // default is 'obj'
@@ -382,7 +382,7 @@ var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname]
 
 function Prop(tinyname, name, fullname, type, desc) {
     this.name = name
-    this.tinyname = tinyname || name
+    this.tinyname = tinyname
     this.fullname = fullname || name
     this.desc = desc
     this.type = type
