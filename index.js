@@ -147,6 +147,8 @@ ArrType.prototype = extend(Type.prototype, {
     is_generic: function () { return this.array === ANY_ARR },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
+            // the base array instance is given a familiar object look '[]' - which is fine because
+            // empty array types are checked/blocked.  created arrays with same any-pattern are returned as ['*']
             return this.name === 'arr' ? [] : this.name     // 'arr' is the base-type
         } else {
             var ret = Type.prototype._basic_obj.call(this)
@@ -292,6 +294,8 @@ ObjType.prototype = extend(Type.prototype, {
     },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
+            // the base object instance is given a familiar object look '{}' - which is fine because
+            // fieldless objects are checked/blocked.  created objects with same any-pattern are returned as {'*':'*'}
             return this.name === 'obj' ? {} : this.name
         }
         var ret = Type.prototype._basic_obj.call(this)
