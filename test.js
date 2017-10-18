@@ -57,7 +57,7 @@ test('create errors', function (t) {
         [ {base: 'nul'},                        /not a creatable type/ ],
         [ {base: 'int', tinyname: 'foo' },      /tinyname without name/ ],
         [ {base: 'int', fullname: 'foo' },      /fullname without name/ ],
-        [ {base: 'mul', name: 'foo' },          /cannot create multi-type without the "multi" property/ ],
+        [ {base: 'mul', name: 'foo' },          /cannot create multi-type without the "mul" property/ ],
     ], tbase.create, { assert: 'throws' })
 })
 
@@ -95,8 +95,8 @@ test('generic array', function (t) {
     t.table_assert([
         [ 'str_or_props',                                                       'exp' ],
         [ 'obj',                                                                true ],
-        [ { base: 'arr', array: [any] },                                        true ],
-        [ { base: 'arr', array: [any, int] },                                   false ],
+        [ { base: 'arr', arr: [any] },                                          true ],
+        [ { base: 'arr', arr: [any, int] },                                     false ],
     ], function (str_or_props) {
         var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
         return t.is_generic()
@@ -106,18 +106,18 @@ test('generic array', function (t) {
 test('toString', function (t) {
     var int = tbase.lookup('int')
     var myint = tbase.create({base:'int', name:'myint'})
-    var anyint = tbase.create({base: 'mul', multi: [int, myint]})
-    var arr_int = tbase.create({base: 'arr', array:[int]})
-    var arr_myint = tbase.create({base: 'arr', array:[myint]})
-    var arr_anyint = tbase.create({base: 'arr', array:[anyint]})
+    var anyint = tbase.create({base: 'mul', mul: [int, myint]})
+    var arr_int = tbase.create({base: 'arr', arr:[int]})
+    var arr_myint = tbase.create({base: 'arr', arr:[myint]})
+    var arr_anyint = tbase.create({base: 'arr', arr:[anyint]})
     t.table_assert([
         [ 'args',                                           'exp'  ],
         [ 'str',                                            'str' ],
         [ 'int',                                            'int' ],
         [ arr_int,                                          '["int"]' ],
         [ arr_myint,                                        '["myint"]'],
-        [ arr_anyint,                                       '[{"$multi":["int","myint"]}]'],
-        [ {base:'obj', pfields:{'s*':arr_anyint}},          '{"s*":[{"$multi":["int","myint"]}]}' ],
+        [ arr_anyint,                                       '[{"$mul":["int","myint"]}]'],
+        [ {base:'obj', pfields:{'s*':arr_anyint}},          '{"s*":[{"$mul":["int","myint"]}]}' ],
         [ {base:'str'},                                     '{"$base":"str"}' ],
         [ {base:'str', name: 'i'},                          'i' ],
 
@@ -133,8 +133,8 @@ test('create() and obj()', function (t) {
     var int = tbase.lookup('int')
     var arr = tbase.lookup('arr')
     var my_int = tbase.create({base: 'int', name: 'my_int'})
-    var int_arr = tbase.create({base: 'arr', array: [ int ]})
-    var my_int_arr = tbase.create({base: 'arr', name: 'my_int_arr', array: [ my_int ]})
+    var int_arr = tbase.create({base: 'arr', arr: [ int ]})
+    var my_int_arr = tbase.create({base: 'arr', name: 'my_int_arr', arr: [ my_int ]})
     t.table_assert([
         [ 'str_or_props',                                           'opt',              'exp'  ],
         [ 's',                                                      {name_depth:0},     'str' ],
@@ -144,16 +144,16 @@ test('create() and obj()', function (t) {
         [ 'o',                                                      {name_depth:0},     {} ],
         [ 'str',                                                    null,               { $base: 'str', $name: 'str', $desc: 'A string of unicode characters (code points in range 0..1114111)', $tinyname: 's', $fullname: 'string' } ],
         [ 'int',                                                    null,               { $base: 'int', $name: 'int', $desc: 'An unbounded integer (range ..)', $tinyname: 'i', $fullname: 'integer' }   ],
-        [ 'arr',                                                    null,               { $name: 'arr', $desc: 'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]', $tinyname: 'a', $fullname: 'array', $array: [ '*' ] } ],
+        [ 'arr',                                                    null,               { $name: 'arr', $desc: 'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]', $tinyname: 'a', $fullname: 'array', $arr: [ '*' ] } ],
         [ 'obj',                                                    null,               { $name: 'obj', $desc: 'A record-like object with fixed field names, or flexible fields (using *-expressions)', $tinyname: 'o', $fullname: 'object', '*': '*' } ],
         [ {base: 'obj', fields: {a: arr}},                          null,               { a: [] } ],
         [ {base: 'obj', pfields: {'*':any}},                        null,               {'*':'*'} ],        // custom object has this different look from base type '{}' - though functionally the same.
-        [ {base: 'arr', array: ['*']},                              null,               ['*'] ],            // custom array has this different look from base type '[]' - though functionally the same.
+        [ {base: 'arr', arr: ['*']},                                null,               ['*'] ],            // custom array has this different look from base type '[]' - though functionally the same.
         [ {base: 'int'},                                            null,               { $base: 'int' }],
         [ int_arr,                                                  null,               [ 'int' ] ],
-        [ {base: 'arr', array: [int_arr]},                          null,               [ ['int'] ] ],
-        [ {base: 'arr', array: [my_int_arr]},                       null,               [ 'my_int_arr' ] ],
-        [ {base: 'arr', array: all_types},                          null,               [ '*', [], 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', {}, 'str', 'typ' ] ],
+        [ {base: 'arr', arr: [int_arr]},                            null,               [ ['int'] ] ],
+        [ {base: 'arr', arr: [my_int_arr]},                         null,               [ 'my_int_arr' ] ],
+        [ {base: 'arr', arr: all_types},                            null,               [ '*', [], 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', {}, 'str', 'typ' ] ],
         [ {base: 'int', name: 'foo'},                               null,               { $base: 'int', $name: 'foo' } ],
         [ {base: 'obj', fields: {a:int}},                           null,               { a: 'int' } ],
         [ {base: 'obj', pfields: {'a*':int}},                       null,               { 'a*': 'int' } ],
@@ -165,7 +165,7 @@ test('create() and obj()', function (t) {
         [ {base: 'obj', fields: { a: int_arr } },                   {name_depth:2},     { a: [ 'int' ] } ],
         [ {name: 'foo', base: 'obj', fields: { a: my_int_arr } },   {name_depth:0},     'foo' ],
         [ {name: 'foo', base: 'obj', fields: { a: my_int_arr } },   {name_depth:1},     { $name: 'foo', a: 'my_int_arr' } ],
-        [ {name: 'foo', base: 'obj', fields: { a: my_int_arr } },   {name_depth:2},     { $name: 'foo', a: { $name: 'my_int_arr', $array: [ 'my_int' ] } } ],
+        [ {name: 'foo', base: 'obj', fields: { a: my_int_arr } },   {name_depth:2},     { $name: 'foo', a: { $name: 'my_int_arr', $arr: [ 'my_int' ] } } ],
         [ {name: 'foo', base: 'obj', fields: { a: int_arr } },      {name_depth:1},     { $name: 'foo', a: [ 'int' ] } ],
     ], function (str_or_props, opt) {
         var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
@@ -175,13 +175,13 @@ test('create() and obj()', function (t) {
 
 test('obj() with references', function (t) {
     var my_int = tbase.create({base: 'int', name: 'my_int'})
-    var my_int_arr = tbase.create({base: 'arr', name: 'my_int_arr', array: [ my_int ]})
+    var my_int_arr = tbase.create({base: 'arr', name: 'my_int_arr', arr: [ my_int ]})
     t.table_assert([
         [ 'str_or_props',                                           'opt',              'exp'  ],
         [ {base: 'obj', fields: {a: 'unresolved'}},                 null,               { a: 'unresolved' } ],
-        [ {base: 'obj', pfields: {'b*': 'unresolved'}},                 null,           { 'b*': 'unresolved' } ],
-        [ {base: 'arr', array: ['another_unknown']},                 null,              ['another_unknown'] ],
-        [ {base: 'mul', multi: ['foo_boo','str']},                 null,                { $multi: [ 'foo_boo', 'str' ] } ],
+        [ {base: 'obj', pfields: {'b*': 'unresolved'}},             null,               { 'b*': 'unresolved' } ],
+        [ {base: 'arr', arr: ['another_unknown']},                  null,               ['another_unknown'] ],
+        [ {base: 'mul', mul: ['foo_boo','str']},                    null,               { $mul: [ 'foo_boo', 'str' ] } ],
     ], function (str_or_props, opt) {
         var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
         return t.obj(opt)

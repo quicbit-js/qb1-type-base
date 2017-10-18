@@ -139,12 +139,12 @@ AnyType.prototype = extend(Type.prototype, {
 // Array
 function ArrType (props) {
     Type.call(this, 'arr', props)
-    props.array && props.array.length || err('cannot define an array type with zero items')
-    this.array = props.array.length === 1 && props.array[0] === ANY ? ANY_ARR : props.array
+    props.arr && props.arr.length || err('cannot define an array type with zero items')
+    this.arr = props.arr.length === 1 && props.arr[0] === ANY ? ANY_ARR : props.arr
 }
 ArrType.prototype = extend(Type.prototype, {
     constructor: ArrType,
-    is_generic: function () { return this.array === ANY_ARR },
+    is_generic: function () { return this.arr === ANY_ARR },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
             // the base array instance is given a familiar object look '[]' - which is fine because
@@ -153,14 +153,14 @@ ArrType.prototype = extend(Type.prototype, {
         } else {
             var ret = Type.prototype._basic_obj.call(this)
             delete ret.$base
-            var arrtypes = this.array.map(function (t) {
+            var arrtypes = this.arr.map(function (t) {
                 return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // handle string references
             })
             if (Object.keys(ret).length === 0) {
                 // a vanilla array with $base: 'arr', $array: [...]
                 return arrtypes
             } else {
-                ret.$array = arrtypes
+                ret.$arr = arrtypes
                 return ret
             }
         }
@@ -210,7 +210,7 @@ FltType.prototype = extend(Type.prototype, {
 // Multiple
 function MulType (props) {
     Type.call(this, 'mul', props)
-    this.multi = props.multi || this.name === this.base || err('cannot create multi-type without the "multi" property')
+    this.mul = props.mul || this.name === this.base || err('cannot create multi-type without the "mul" property')
 }
 MulType.prototype = extend(Type.prototype, {
     constructor: MulType,
@@ -220,7 +220,7 @@ MulType.prototype = extend(Type.prototype, {
         }
         var ret = Type.prototype._basic_obj.call(this)
         delete ret.$base
-        ret.$multi = this.multi.map(function (t) {
+        ret.$mul = this.mul.map(function (t) {
             return (typeof t === 'string') ? t : t._obj(opt, depth + 1)     // handle string references
         })
         return ret
@@ -355,7 +355,7 @@ var ANY_ARR = [ANY]
 // not possible types created (using create())
 var TYPES_BY_NAME = {
     '*': ANY,
-    arr: new ArrType(assign(type_props('arr'), {array: ANY_ARR})),
+    arr: new ArrType(assign(type_props('arr'), {arr: ANY_ARR})),
     boo: new BooType(type_props('boo')),
     blb: new BlbType(type_props('blb')),
     byt: new BytType(type_props('byt')),
