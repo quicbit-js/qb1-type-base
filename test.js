@@ -85,7 +85,7 @@ test('generic object', function (t) {
         [ { base: 'obj', fields: {a:int}, pfields: {'a*': int} },               [ false, false ] ],
     ], function (str_or_props) {
         var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
-        return [t.has_generic_key(), t.is_generic()]
+        return [t.is_generic, t.is_generic_any]
     })
 })
 
@@ -96,10 +96,10 @@ test('generic array', function (t) {
         [ 'str_or_props',                                                       'exp' ],
         [ 'obj',                                                                true ],
         [ { base: 'arr', arr: [any] },                                          true ],
-        [ { base: 'arr', arr: [any, int] },                                     false ],
+        [ { base: 'arr', arr: [int] },                                          false ],
     ], function (str_or_props) {
         var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
-        return t.is_generic()
+        return t.is_generic
     })
 })
 
@@ -129,7 +129,7 @@ test('toString', function (t) {
 
 test('create() and obj()', function (t) {
     var any = tbase.lookup('any')
-    var all_types = tbase.types()
+    var all_types = tbase.types().slice(1)      // leave out the '*' any type
     var int = tbase.lookup('int')
     var arr = tbase.lookup('arr')
     var my_int = tbase.create({base: 'int', name: 'my_int'})
@@ -153,7 +153,7 @@ test('create() and obj()', function (t) {
         [ int_arr,                                                  null,               [ 'int' ] ],
         [ {base: 'arr', arr: [int_arr]},                            null,               [ ['int'] ] ],
         [ {base: 'arr', arr: [my_int_arr]},                         null,               [ 'my_int_arr' ] ],
-        [ {base: 'arr', arr: all_types},                            null,               [ '*', [], 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', {}, 'str', 'typ' ] ],
+        [ {base: 'arr', arr: all_types},                            null,               [ [], 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', {}, 'str', 'typ' ] ],
         [ {base: 'int', name: 'foo'},                               null,               { $base: 'int', $name: 'foo' } ],
         [ {base: 'obj', fields: {a:int}},                           null,               { a: 'int' } ],
         [ {base: 'obj', pfields: {'a*':int}},                       null,               { 'a*': 'int' } ],

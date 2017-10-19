@@ -140,11 +140,11 @@ AnyType.prototype = extend(Type.prototype, {
 function ArrType (props) {
     Type.call(this, 'arr', props)
     props.arr && props.arr.length || err('cannot define an array type with zero items')
-    this.arr = props.arr.length === 1 && props.arr[0] === ANY ? ANY_ARR : props.arr
+    this.arr = props.arr[0].tinyname === '*' ? ANY_ARR : props.arr
+    this.is_generic = this.arr[0].tinyname === '*'   // callers should verify that 'any' combined with others becomes simply ['*']
 }
 ArrType.prototype = extend(Type.prototype, {
     constructor: ArrType,
-    is_generic: function () { return this.arr === ANY_ARR },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
             // the base array instance is given a familiar object look '[]' - which is fine because
@@ -262,20 +262,15 @@ function ObjType (props) {
     this.fields = props.fields || {}
     this.pfields = props.pfields || {}
     ;(Object.keys(this.fields).length) || (Object.keys(this.pfields).length) || err('no fields given for object')
-    if (this.pfields['*'] === ANY && Object.keys(this.pfields).length === 1) {
-        this.pfields = ANY_FIELD                     // make generic checks fast by using same instance
-    }
+
+    // generic means has *no* key specifications { '*': 'some-type' }
+    this.is_generic = this.pfields['*'] != null && Object.keys(this.fields).length === 0 && Object.keys(this.pfields).length === 1
+
+    // generic_any means has no key or type restrictions { '*':'*' }
+    this.is_generic_any = this.is_generic && this.pfields['*'].name === '*'
 }
 ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
-    // return true if fields are simply {'*':'*'}
-    is_generic: function () {
-        return this.pfields === ANY_FIELD && Object.keys(this.fields).length === 0
-    },
-    // return true if this is object has only the wild-card key {'*': some-type}
-    has_generic_key: function () {
-        return this.pfields['*'] != null && Object.keys(this.fields).length === 0 && Object.keys(this.pfields).length === 1
-    },
     fieldtyp: function (n) {
         var t = this.fields[n]
         if (t) {
@@ -421,6 +416,15 @@ function create (props) {
     return new (ctor)(props)
 }
 
+// *returns* a lookup function that works like lookup, but creates a new object instance each call with the added
+// specified extra properties (for building custom type trees).
+function new_lookup (init_props) {
+    return function (name) {
+        return
+    }
+}
+
+// returns same instance every time
 function lookup (name) {
     return TYPES_BY_ALL_NAMES[name]
 }
@@ -430,6 +434,7 @@ function err (msg) { throw Error(msg) }
 module.exports = {
     create: create,
     lookup: lookup,
+    new_lookup: new_lookup,
     props: function () { return PROPS },
     types: function () { return TYPES },
 }
