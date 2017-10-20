@@ -40,13 +40,28 @@ test('types', function (t) {
 test('lookup', function (t) {
     t.table_assert([
         [ 'name',                                   'exp' ],
-        [ 's',                                      { name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
-        [ 'str',                                    { name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
-        [ 'string',                                 { name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
-        [ 'typ',                                    { name: 'typ', tinyname: 't', fullname: 'type', base: 'typ' } ],
+        [ 's',                                      { same_instance: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
+        [ 'str',                                    { same_instance: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
+        [ 'string',                                 { same_instance: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
+        [ 'typ',                                    { same_instance: true, name: 'typ', tinyname: 't', fullname: 'type', base: 'typ' } ],
     ], function (name) {
         var t = tbase.lookup(name)
-        return qbobj.select(t, ['name', 'tinyname', 'fullname', 'base'])
+        var ret = { same_instance: tbase.lookup(name) === t }
+        return qbobj.select(t, ['name', 'tinyname', 'fullname', 'base'], {init: ret})
+    })
+})
+
+test('create_base', function (t) {
+    t.table_assert([
+        [ 'name',                                   'exp' ],
+        [ 's',                                      { same_instance: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
+        [ 'str',                                    { same_instance: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
+        [ 'string',                                 { same_instance: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
+        [ 'typ',                                    { same_instance: false, name: 'typ', tinyname: 't', fullname: 'type', base: 'typ' } ],
+    ], function (name) {
+        var t = tbase.create_base(name)
+        var ret = { 'same_instance': tbase.lookup(name) === t}
+        return qbobj.select(t, ['name', 'tinyname', 'fullname', 'base'], {init: ret})
     })
 })
 
@@ -54,7 +69,9 @@ test('create errors', function (t) {
     t.table_assert([
         [ 'create',                             'exp'  ],
         [ {base: 'foo' },                       /unknown base/ ],
-        [ {base: 'nul'},                        /not a creatable type/ ],
+        [ {base: 'nul'},                        /cannot be created using properties/ ],
+        [ {base: '*'},                          /cannot be created using properties/ ],
+        [ {base: 'typ'},                        /cannot be created using properties/ ],
         [ {base: 'int', tinyname: 'foo' },      /tinyname without name/ ],
         [ {base: 'int', fullname: 'foo' },      /fullname without name/ ],
         [ {base: 'mul', name: 'foo' },          /cannot create multi-type without the "mul" property/ ],

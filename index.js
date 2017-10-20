@@ -42,45 +42,6 @@ function type_props (name) {
     return { name: name, tinyname: r[0], fullname: r[1], desc: r[2] }
 }
 
-// the types 'any', 'typ' and 'nul' are not in this list because they are only constructed once (derivative types don't exist for them)
-var PUBLIC_CONSTRUCTORS = {
-    arr: ArrType,
-    boo: BooType,
-    blb: BlbType,
-    byt: BytType,
-    dec: DecType,
-    flt: FltType,
-    mul: MulType,
-    int: IntType,
-    num: NumType,
-    obj: ObjType,
-    str: StrType,
-}
-
-// qb1 core/bootstrap types.  all types are extensions or assemblies of these core types.
-// Each built-in type has the form:
-//
-//      { $type: type, $nam: str }
-//
-// ... where the 'type' value is any registered type (recursive).  Since 'type' is the default for every
-// type object, we can express the built-in types more succinctly as:
-//
-//      { $name: str }
-//
-// Custom record types are defined:
-//
-//      { $name: str, key1: type, key2: type, ... }
-//
-// ... again where keys are strings and 'type' values are any registered type (recursive)
-//
-// Objects have the same form -
-//
-//      { $name: str, key1: type, key2: type, ... }
-//
-// ... however, at least one of the keys must have a wild card '*' to be considered an object (and not a record).
-// Unlike records that have fixed structure, an object allows unlimited key possibilties.  Definitions of records themselves are
-// actually 'object' types with the stipulation that keys start with a letter and may not contain '*'.
-//
 function Type (base, props) {
     this.base = base
     this.code = BASE_CODES[props.base]
@@ -96,6 +57,7 @@ function Type (base, props) {
     }
 
     this.stip = props.stip || null
+    this.cust = props.cust || null  // optional user custom objects can be added during construction for js efficiency
 }
 Type.prototype = {
     constructor: Type,
@@ -138,10 +100,11 @@ AnyType.prototype = extend(Type.prototype, {
 
 // Array
 function ArrType (props) {
-    Type.call(this, 'arr', props)
     props.arr && props.arr.length || err('cannot define an array type with zero items')
-    this.arr = props.arr[0].tinyname === '*' ? ANY_ARR : props.arr
-    this.is_generic = this.arr[0].tinyname === '*'   // callers should verify that 'any' combined with others becomes simply ['*']
+
+    Type.call(this, 'arr', props)
+    this.arr = props.arr
+    this.is_generic = this.arr[0].name === '*'   // callers should verify that 'any' combined with others becomes simply ['*']
 }
 ArrType.prototype = extend(Type.prototype, {
     constructor: ArrType,
@@ -338,35 +301,61 @@ NulType.prototype = extend(Type.prototype, {
 // create codes (used in constructors)
 var BASE_CODES = qbobj.map(TYPE_DATA,  null, function (k, v) { return v[0].charCodeAt(0) })
 
-// create single instances
-
-var NUL = new NulType(type_props('nul'))
-var TYP = new TypType(type_props('typ'))
-var ANY = new AnyType(type_props('*'))
-var ANY_FIELD = {'*': ANY}
-var ANY_ARR = [ANY]
-
-// single instances of the base types available via the lookup() function.  These have base === name, which is
-// not possible types created (using create())
-var TYPES_BY_NAME = {
-    '*': ANY,
-    arr: new ArrType(assign(type_props('arr'), {arr: ANY_ARR})),
-    boo: new BooType(type_props('boo')),
-    blb: new BlbType(type_props('blb')),
-    byt: new BytType(type_props('byt')),
-    dec: new DecType(type_props('dec')),
-    flt: new FltType(type_props('flt')),
-    mul: new MulType(type_props('mul')),
-    int: new IntType(type_props('int')),
-    nul: NUL,
-    num: new NumType(type_props('num')),
-    obj: new ObjType(assign(type_props('obj'), {pfields: ANY_FIELD})),
-    str: new StrType(type_props('str')),
-    typ: TYP,
+var CONSTRUCTORS = {
+    '*': AnyType,
+    arr: ArrType,
+    boo: BooType,
+    blb: BlbType,
+    byt: BytType,
+    dec: DecType,
+    flt: FltType,
+    mul: MulType,
+    int: IntType,
+    nul: NulType,
+    num: NumType,
+    obj: ObjType,
+    str: StrType,
+    typ: TypType,
 }
-var TYPES = Object.keys(TYPES_BY_NAME).map(function (k) { return TYPES_BY_NAME[k] })
-TYPES.sort(function (a,b) { return a.name > b.name ? 1 : -1 })       // names never equal
-var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
+
+// create a vanilla base type using the given 'any' instance for array/object - (if any is not given, a new 'any' instance will be created for array/object types)
+function _create_base (name, any) {
+    var ctor = CONSTRUCTORS[name]
+    var props = type_props(name)
+    switch (name) {
+        case 'arr':
+            props = assign(props, {arr: [any || new AnyType(type_props('*'))]})
+            break
+        case 'obj':
+            props = assign(props, {pfields: {'*': any || new AnyType(type_props('*'))}})
+            break
+        // other type props are just vanilla name, description...
+    }
+    return new ctor(props)
+}
+
+// public version of create_base - works like lookup(), but creates a new vanilla base type instance.
+function create_base (name) {
+    var t = TYPES_BY_ALL_NAMES[name] || err('unknown base type: ' + name)
+    return _create_base(t.name)
+}
+
+// Return an instance of every base type (all have base === name, which is
+// not possible for types created with the public create(props) function.
+// object and array types share a the same 'any' instance that is
+// in the set.
+function create_types () {
+    var any = _create_base('*')
+    var ret = [any]
+    var names = ['arr', 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'typ']
+    names.forEach(function (n) {
+        ret.push(_create_base(n))
+    })
+    ret.sort(function (a,b) { return a.name > b.name ? 1 : -1 })       // names never equal
+    return ret
+}
+
+var TYPES = create_types()
 
 function Prop(tinyname, name, fullname, type, desc) {
     this.name = name
@@ -403,28 +392,17 @@ var PROPS =
     ].map(function (r) { return new Prop(r[0], r[1], r[2], r[3], r[4]) } ).sort(function (a,b) { return a.name > b.name ? 1 : -1 })
 
 function create (props) {
-    var ctor = PUBLIC_CONSTRUCTORS[props.base]
-    if (ctor == null) {
-        if (lookup(props.base)) {
-            err('type ' + props.base + ' is not a creatable type - try using lookup instead')
-        } else {
-            err('unknown base type: ' + props.base)
-        }
-    }
+    var ctor = CONSTRUCTORS[props.base] || err('unknown base type: ' + props.base)
+    ;({N:1,nul:1,null:1, '*':1, t:1,typ:1,type:1}[props.base]) == null || err('type ' + props.base + ' cannot be created using properties - try using lookup() or create_base() instead')
     props.name !== props.base || err('cannot redefine a base type: ' + props.name)
 
     return new (ctor)(props)
 }
 
-// *returns* a lookup function that works like lookup, but creates a new object instance each call with the added
-// specified extra properties (for building custom type trees).
-function new_lookup (init_props) {
-    return function (name) {
-        return
-    }
-}
+// A set of re-usable type instances for lookup().
+var TYPES_BY_ALL_NAMES = create_types(new AnyType(type_props('*'))).reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
 
-// returns same instance every time
+// lookup a vanilla base instance - the same instance every time
 function lookup (name) {
     return TYPES_BY_ALL_NAMES[name]
 }
@@ -433,8 +411,8 @@ function err (msg) { throw Error(msg) }
 
 module.exports = {
     create: create,
+    create_base: create_base,
     lookup: lookup,
-    new_lookup: new_lookup,
     props: function () { return PROPS },
-    types: function () { return TYPES },
+    types: function (opt) { return opt && opt.copy ? create_types(null) : TYPES },
 }
