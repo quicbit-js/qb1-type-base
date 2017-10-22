@@ -204,3 +204,27 @@ test('obj() with references', function (t) {
         return t.obj(opt)
     })
 })
+
+test.only('link_children', function (t) {
+    // define a type using different instances for each node.  equivalent of:
+    //  > obj2typ({ a: { '$mul': [ 'str', 'my_int_arr' ] }, b: 'str', 'num*': 'int' })
+    var str1 = tbase.create_base('str')
+    var str2 = tbase.create_base('str')
+    var my_int = tbase.create({base: 'int', name: 'my_int'})
+    var my_int_arr = tbase.create({base: 'arr', name: 'my_int_arr', arr: [ my_int ]})
+    var int = tbase.create_base('int')
+    var mul = tbase.create({base: 'mul', mul: [str1, my_int_arr]})
+    var obj = tbase.create({base: 'obj', fields: {a:mul, b:str2}, pfields: {'num*':int}})
+    obj.link_children()
+
+    t.equal(mul.parent, obj)
+    t.equal(str2.parent, obj)
+    t.equal(int.parent, obj)
+
+    t.equal(str1.parent, mul)
+    t.equal(my_int_arr.parent, mul)
+
+    t.equal(my_int.parent, my_int_arr)
+
+    t.end()
+})

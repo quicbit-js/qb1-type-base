@@ -58,6 +58,7 @@ function Type (base, props) {
 
     this.stip = props.stip || null
     this.cust = props.cust || null  // optional user custom objects can be added during construction for js efficiency
+    this.parent = null              // set if link_children() is called
 }
 Type.prototype = {
     constructor: Type,
@@ -127,6 +128,10 @@ ArrType.prototype = extend(Type.prototype, {
                 return ret
             }
         }
+    },
+    link_children: function () {
+        var self = this
+        this.arr.forEach(function (c) { if (c.link_children) {c.link_children()} c.parent = self })
     }
 })
 
@@ -187,6 +192,10 @@ MulType.prototype = extend(Type.prototype, {
             return (typeof t === 'string') ? t : t._obj(opt, depth + 1)     // handle string references
         })
         return ret
+    },
+    link_children: function () {
+        var self = this
+        this.mul.forEach(function (c) { if (c.link_children) {c.link_children()} c.parent = self })
     }
 })
 
@@ -269,6 +278,11 @@ ObjType.prototype = extend(Type.prototype, {
             }, { init: ret })
         }
         return ret
+    },
+    link_children: function () {
+        var self = this
+        qbobj.for_val(this.fields, function (c) { if (c.link_children) {c.link_children()} c.parent = self })
+        qbobj.for_val(this.pfields, function (c) { if (c.link_children) {c.link_children()} c.parent = self })
     }
 })
 
@@ -336,7 +350,10 @@ function _create_base (name, any) {
 
 // public version of create_base - works like lookup(), but creates a new vanilla base type instance.
 function create_base (name) {
-    var t = TYPES_BY_ALL_NAMES[name] || err('unknown base type: ' + name)
+    var t = TYPES_BY_ALL_NAMES[name]
+    if (t == null) {
+        return null     // same behavior as lookup()
+    }
     return _create_base(t.name)
 }
 
