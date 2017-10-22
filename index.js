@@ -265,15 +265,23 @@ function wildcard_regex(s) {
 // Object - like record, but has one or more pattern-fields (pfields)
 function ObjType (props) {
     Type.call(this, 'obj', props)
-    this.fields = props.fields || {}
-    this.pfields = props.pfields || {}
-    ;(Object.keys(this.fields).length) || (Object.keys(this.pfields).length) || err('no fields given for object')
+
+    this.fields = props.fields || {}            // literal field types - exact match
+    this.pfields = props.pfields || {}          // pattern field types (expression match)
+    this.match_all = props.match_all            // the '*' field type - matches all unmatched fields
+
+    !this.pfields['*'] || err('use match_all')
+
+    var fkeys = Object.keys(this.fields)
+    var pfkeys = Object.keys(this.pfields)
+
+    fkeys.length || pfkeys.length || this.match_all || err('no field types defined')
 
     // generic means has *no* key specifications { '*': 'some-type' }
-    this.is_generic = this.pfields['*'] != null && Object.keys(this.fields).length === 0 && Object.keys(this.pfields).length === 1
+    this.is_generic = fkeys.length === 0 && pfkeys.length === 0
 
-    // generic_any means has no key or type restrictions { '*':'*' }
-    this.is_generic_any = this.is_generic && this.pfields['*'].name === '*'
+    // generic_any means has no key or type specifications at all { '*':'*' }
+    this.is_generic_any = this.is_generic && this.match_all.name === '*'
 }
 ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
@@ -283,15 +291,16 @@ ObjType.prototype = extend(Type.prototype, {
             return t
         }
 
-        var ekeys = Object.keys(this.pfields)
-        for (var i=0; i<ekeys.length; i++) {
-            var k = ekeys[i]
+        var pf_keys = Object.keys(this.pfields)
+        for (var i=0; i<pf_keys.length; i++) {
+            var k = pf_keys[i]
             var re =  wildcard_regex(k)
             if (re.test(n)) {
                 return this.pfields[k]
             }
         }
-        return null     // no matching field
+
+        return this.match_all || null
     },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
@@ -310,6 +319,9 @@ ObjType.prototype = extend(Type.prototype, {
             qbobj.map(this.pfields, null, function (k, t) {
                 return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // handle string references
             }, { init: ret })
+        }
+        if (this.match_all) {
+            ret['*'] = this.match_all._obj(opt, depth + 1)
         }
         return ret
     },
@@ -383,7 +395,7 @@ function _create_base (name, any) {
             props = assign(props, {arr: [any || new AnyType(type_props('*'))]})
             break
         case 'obj':
-            props = assign(props, {pfields: {'*': any || new AnyType(type_props('*'))}})
+            props = assign(props, {match_all: any || new AnyType(type_props('*'))})
             break
         // other type props are just vanilla name, description...
     }

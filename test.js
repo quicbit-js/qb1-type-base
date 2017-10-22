@@ -97,8 +97,9 @@ test('generic object', function (t) {
     t.table_assert([
         [ 'str_or_props',                                                        'exp' ],
         [ 'obj',                                                                [ true, true ] ],
-        [ { base: 'obj', pfields: {'*':any} },                                  [ true , true ] ],
-        [ { base: 'obj', pfields: {'*':int} },                                  [ true , false ] ],
+        [ { base: 'obj', match_all: any },                                      [ true , true ] ],
+        [ { base: 'obj', match_all: int },                                      [ true , false ] ],
+        [ { base: 'obj', pfields: {'a*':int} },                                 [ false , false ] ],
         [ { base: 'obj', fields: {a:int}, pfields: {'a*': int} },               [ false, false ] ],
     ], function (str_or_props) {
         var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
@@ -164,7 +165,7 @@ test('create() and obj()', function (t) {
         [ 'arr',                                                    null,               { $name: 'arr', $desc: 'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]', $tinyname: 'a', $fullname: 'array', $arr: [ '*' ] } ],
         [ 'obj',                                                    null,               { $name: 'obj', $desc: 'A record-like object with fixed field names, or flexible fields (using *-expressions)', $tinyname: 'o', $fullname: 'object', '*': '*' } ],
         [ {base: 'obj', fields: {a: arr}},                          null,               { a: [] } ],
-        [ {base: 'obj', pfields: {'*':any}},                        null,               {'*':'*'} ],        // custom object has this different look from base type '{}' - though functionally the same.
+        [ {base: 'obj', match_all: any},                            null,               {'*':'*'} ],        // custom object has this different look from base type '{}' - though functionally the same.
         [ {base: 'arr', arr: ['*']},                                null,               ['*'] ],            // custom array has this different look from base type '[]' - though functionally the same.
         [ {base: 'int'},                                            null,               { $base: 'int' }],
         [ int_arr,                                                  null,               [ 'int' ] ],
