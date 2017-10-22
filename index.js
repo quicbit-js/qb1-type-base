@@ -57,8 +57,12 @@ function Type (base, props) {
     }
 
     this.stip = props.stip || null
-    this.cust = props.cust || null  // optional user custom objects can be added during construction for js efficiency
-    this.parent = null              // set if link_children() is called
+
+    // these are set if link_children is called
+    this.parent = null
+    this.parent_ctx = null      // context within parent - index for arrays and multi-type, field (key) for objects
+
+    this.cust = props.cust || null  // place-holder for custom ad hoc data
 }
 Type.prototype = {
     constructor: Type,
@@ -88,6 +92,28 @@ Type.prototype = {
     obj: function (opt) {
         opt = assign({name_depth: 1}, opt)
         return this._obj(opt, 0)
+    },
+    // return a path for humans - a path which:
+    //    1. has the same structure as as the data it represents (by flattening multi types into their parent context)
+    //    2. includes type information with array type indexes so they are more quickly understood
+    path: function () {
+        var path = []
+        var c = this
+        while (c && c.parent) {
+            var pstr
+            if (typeof c.parent_ctx === 'number') {
+                pstr = '{' + c.base + '}'
+                if (c.parent.base === 'mul') {
+                    c = c.parent                // skip multi-type node (put type with parent_ctx)
+                }
+                pstr = (c.parent ? c.parent_ctx : '') + pstr
+            } else {
+                pstr = c.parent_ctx
+            }
+            path.push(pstr)
+            c = c.parent
+        }
+        return path.reverse().join('/')
     }
 }
 
@@ -131,7 +157,11 @@ ArrType.prototype = extend(Type.prototype, {
     },
     link_children: function () {
         var self = this
-        this.arr.forEach(function (c) { if (c.link_children) {c.link_children()} c.parent = self })
+        this.arr.forEach(function (c,i) {
+            if (c.link_children) { c.link_children() }
+            c.parent = self
+            c.parent_ctx = i
+        })
     }
 })
 
@@ -195,7 +225,11 @@ MulType.prototype = extend(Type.prototype, {
     },
     link_children: function () {
         var self = this
-        this.mul.forEach(function (c) { if (c.link_children) {c.link_children()} c.parent = self })
+        this.mul.forEach(function (c,i) {
+            if (c.link_children) { c.link_children() }
+            c.parent = self
+            c.parent_ctx = i
+        })
     }
 })
 
@@ -281,8 +315,16 @@ ObjType.prototype = extend(Type.prototype, {
     },
     link_children: function () {
         var self = this
-        qbobj.for_val(this.fields, function (c) { if (c.link_children) {c.link_children()} c.parent = self })
-        qbobj.for_val(this.pfields, function (c) { if (c.link_children) {c.link_children()} c.parent = self })
+        qbobj.for_val(this.fields, function (k,c) {
+            if (c.link_children) {c.link_children()}
+            c.parent = self
+            c.parent_ctx = k
+        })
+        qbobj.for_val(this.pfields, function (k,c) {
+            if (c.link_children) {c.link_children()}
+            c.parent = self
+            c.parent_ctx = k
+        })
     }
 })
 
