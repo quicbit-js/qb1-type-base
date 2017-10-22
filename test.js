@@ -211,11 +211,12 @@ test('link_children and path', function (t) {
     //  > obj2typ({ a: { '$mul': [ 'str', 'my_int_arr' ] }, b: 'str', 'num*': 'int' })
     var str1 = tbase.create_base('str')
     var str2 = tbase.create_base('str')
+    var num1 = tbase.create_base('num')
     var my_int = tbase.create({base: 'int', name: 'my_int'})
     var my_int_arr = tbase.create({base: 'arr', name: 'my_int_arr', arr: [ my_int ]})
     var int = tbase.create_base('int')
     var mul = tbase.create({base: 'mul', mul: [str1, my_int_arr]})
-    var obj = tbase.create({base: 'obj', fields: {a:mul, b:str2}, pfields: {'num*':int}})
+    var obj = tbase.create({base: 'obj', fields: {a:mul, b:str2, '*':num1}, pfields: {'num*':int}})
     obj.link_children()
 
     t.equal(mul.parent, obj)
@@ -225,6 +226,10 @@ test('link_children and path', function (t) {
     t.equal(str2.parent, obj)
     t.equal(str2.parent_ctx, 'b')
     t.equal(str2.path(), 'b')
+
+    t.equal(num1.parent, obj)
+    t.equal(num1.parent_ctx, '*')
+    t.equal(num1.path(), '*')
 
     t.equal(int.parent, obj)
     t.equal(int.parent_ctx, 'num*' )

@@ -337,6 +337,12 @@ ObjType.prototype = extend(Type.prototype, {
             c.parent = self
             c.parent_ctx = k
         })
+        if (this.match_all) {
+            var c = this.match_all
+            if (c.link_children) {c.link_children()}
+            c.parent = self
+            c.parent_ctx = '*'
+        }
     }
 })
 
