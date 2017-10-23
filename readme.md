@@ -186,3 +186,113 @@ to think of concrete physical limits taking precedence over business limits, not
 ## Compound Types, Binary Interoperability and More...
 
 See qb1-typex for deeper and broader coverage of qb1 types.
+
+# Design Notes
+
+## Static Versus Dynamic Types
+
+All base types except the DynType are implemented to be built statically - as if they were immutable.  Though 
+properties are not actually immutable, the base type API guides users to create types with all properties up front
+with the minor exception of linking via link_children().
+
+So the base types get the benefits of the simplification that immutibility gives - not worrying about
+changes to existing types.  These static types are ideal for driving strict parsing using a type structure where
+data must fit the data type.
+
+However, ridged data structure is not suited for type discovery.  For efficient type discovery and capture, we
+need a type graph that allows fluid update to any node in our graph.  But we don't want to implement
+all logic twice.  DynType solves this problem by accepting type information additions after it is created and mimicing 
+any of the given types as it changes.  At the moment a method like obj() is called, DynType will have the 
+base type and properties and even use the same methods as the type that it represents.
+
+## Custom Info
+
+Dynamic types support a custom object property called 'cust' where clients can store information within
+the graph.  This information will be included in the type toString() as well as in obj() calls by default
+under the cust property.  By default this property is defined as an any-type '*' and any data put
+into it will be serialized via type.toString() and type.obj().  The properties serialized can be controlled 
+by setting cust.$type to a narrower type definition, for example:
+
+    mytype.cust = {
+        $type: { file: 'str', count: 'int' } },
+        file: ... 
+        count: ...
+    }
+
+The custom type defined here is a modification of a 'type', so it will show up in serialization as an 
+extension of type, so instead of { $type: 'type', ... } we would see { $type: { $base: 'type', cust: {...} }:
+
+    {
+        // instead of $type: 'type', we get:
+        $type: [ { $base: 'type', cust: { file: 'str', count: 'int' } } ],
+        $value: [
+            {
+                '*': {
+                    name: 's',
+                    description: { base: 's', $cust: { file: 'cache.json', count: 2522 } },
+                    maintainers: [],
+                    keywords: ['s'],
+                    license: { $mul: [ 's', { type: 's', url: 's', description: 's', copyright: 's' }, [{type: 's', url:'s'}] ] },
+                    readmeFilename: 's',
+                    time: { $mul: ['s', {modified: 's'}] },
+                    versions: { '*': 's' },
+                    homepage: 's',
+                    bugs: { url: 's', email: 's' },
+                    repository: { $mul: [
+                        { type: 's', url: 's', path: 's', web: 's', private: 'b', git: 's', scripts: {}, dist: 's', github: 's' },
+                        [{ type: 's', url: 's', path: 's', web: 's', private: 'b', git: 's', scripts: {}, dist: 's', github: 's' }]
+                    ] },
+                    users: {
+                        '*': 'b',
+                    },
+                    contributors: { $mul: [{ name: 's', email: 's', url: 's' }, [{ name: 's', email: 's', url: 's' }], 's' ] },
+                    author: { name: 's', email: 's', url: 's' },
+                    'dist-tags': { '*': 's' },                
+                    $cust: { file: 'cache.json', count: 'int' }, 
+                },
+                $cust: { file: 'cache.json', count: 32633 }
+            }
+        ]
+    }
+    
+
+You can use the addenda ($add) property to give equivalent information, but leave the basic type-graph cleaner and
+easier to read:
+
+    {
+        $typ: [ { $base: type, cust: { file: str, count: int } } ],
+        $val: [
+            {
+                '*': {
+                    name: 's',
+                    description: 's',
+                    maintainers: [],
+                    keywords: ['s'],
+                    license: { $mul: [ 's', { type: 's', url: 's', description: 's', copyright: 's' }, [{type: 's', url:'s'}] ] },
+                    readmeFilename: 's',
+                    time: { $mul: ['s', {modified: 's'}] },
+                    versions: { '*': 's' },
+                    homepage: 's',
+                    bugs: { url: 's', email: 's' },
+                    repository: { $mul: [
+                        { type: 's', url: 's', path: 's', web: 's', private: 'b', git: 's', scripts: {}, dist: 's', github: 's' },
+                        [{ type: 's', url: 's', path: 's', web: 's', private: 'b', git: 's', scripts: {}, dist: 's', github: 's' }]
+                    ] },
+                    users: {
+                        '*': 'b',
+                    },
+                    contributors: { $mul: [{ name: 's', email: 's', url: 's' }, [{ name: 's', email: 's', url: 's' }], 's' ] },
+                    author: { name: 's', email: 's', url: 's' },
+                    'dist-tags': { '*': 's' },                
+                }
+            }
+        ],
+        // separate the custom properties into addenda using the serialization option { addenda: [ '0/cust' ] }  
+        $add: {
+            'cust': {
+                '.':              { file: 'cache.json', count: 32633 },
+                '*':              { file: 'cache.json', count: 82552 }, 
+                '*/description':  { file: 'cache.json', count: 2522 }
+            }
+        }
+    }
