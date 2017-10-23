@@ -191,6 +191,24 @@ test('create() and obj()', function (t) {
     })
 })
 
+test('create() and obj() with trivial multi-types', function (t) {
+    var int = tbase.lookup('int')
+    var arr = tbase.lookup('arr')
+    var mul1 = tbase.create({base: 'mul', name: 'my_mul1', mul: [int] })
+    var mul2 = tbase.create({base: 'mul', mul: [mul1]})
+    var mul_arr = tbase.create({base: 'arr', arr: [ mul2 ]})
+    t.table_assert([
+        [ 'props',                                                  'opt',              'exp'  ],
+        [ {base: 'obj', fields: {a: mul1}},                         null,               { a: 'int' } ],
+        [ {base: 'obj', fields: {a: mul2}},                         null,               { a: 'int' } ],
+        [ {base: 'obj', fields: {a: mul_arr}},                         null,            { a: ['int'] } ],
+
+    ], function (props, opt) {
+        var t = tbase.create(props)
+        return t.obj(opt)
+    })
+})
+
 test('obj() with references', function (t) {
     var my_int = tbase.create({base: 'int', name: 'my_int'})
     var my_int_arr = tbase.create({base: 'arr', name: 'my_int_arr', arr: [ my_int ]})
@@ -256,10 +274,10 @@ test('path with dynamic multi-types', function (t) {
     var mul1 = tbase.create({base: 'mul', mul: []})
     t.equal(str1.path(), '')
 
-    mul1.add_type(str1)
+    mul1.add_type(str1, {link_children: true})
     t.equal(str1.path(), '')
 
-    mul1.add_type(int1)
+    mul1.add_type(int1, {link_children: true})
     t.equal(str1.path(), '{str}')
     t.equal(int1.path(), '{int}')
 

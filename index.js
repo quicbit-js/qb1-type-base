@@ -211,7 +211,12 @@ FltType.prototype = extend(Type.prototype, {
     constructor: FltType,
 })
 
-// Multiple
+// Multiple Types
+//
+// multi is the only type that supports dynamic addition of child values (via add_type()).  It allows
+// clients to construct an initial graph and expand types as new types are discovered.  path() and typ2obj handling
+// have been updated to gracefully ignore / step-over multitypes holding a single child type.
+//
 function MulType (props, opt) {
     Type.call(this, 'mul', props)
 
@@ -229,6 +234,10 @@ function MulType (props, opt) {
 MulType.prototype = extend(Type.prototype, {
     constructor: MulType,
     _obj: function (opt, depth) {
+        if (this.mul.length === 1) {
+            var t = this.mul[0]
+            return typeof t === 'string' ? t : t._obj(opt, depth)       // skip this trivial multi-type without increasing depth
+        }
         if (this.name && depth >= opt.name_depth) {
             return this.name
         }
@@ -239,9 +248,11 @@ MulType.prototype = extend(Type.prototype, {
         })
         return ret
     },
-    add_type: function (t) {
-        t.parent = this
-        t.parent_ctx = this.mul.length
+    add_type: function (t, opt) {
+        if (opt && opt.link_children) {
+            t.parent = this
+            t.parent_ctx = this.mul.length
+        }
         this.mul.push(t)
     }
 })
@@ -369,65 +380,6 @@ function NulType (props) {
 }
 NulType.prototype = extend(Type.prototype, {
     constructor: NulType,
-})
-
-// Dynamic type - mimics an anonymous single type added - or multi type of all added types
-function DynType () {
-    Type.call(this, 'any', {})              // set up as 'any' type.
-    this.mul = []                           // same sole property as MulType.  with 2 or more types, we delegate calls of this instance to MulType
-}
-DynType.prototype = extend(Type.prototype, {
-    constructor: DynType,
-    add_type: function (t) {
-        !{mul:1,'*':1}[t.base] || err('DynType cannot add multiple type: ' + t.base)
-        this.mul.push(t)
-        if (this.mul.length === 1) {
-            // mimic single type - this works because type classes are flat with plain properties.
-            Object.keys(t).forEach(function (k) {
-                this[k] = t[k]
-            })
-            // as far as paths, this type doesn't exist - it is just a holder of the type
-            t.parent = this.parent
-            t.parent_ctx = this.parent_ctx
-        } else if (this.mul.length === 2) {
-            // switch to multi-type - clean up old props
-            if (this.fields) {
-                delete this.fields
-                delete this.pfields
-                delete this.match_all
-                delete this.is_generic
-                delete this.is_generic_any
-            } else if (this.arr) {
-                delete this.arr
-            }
-            this.base = 'mul'
-            this.code = BASE_CODES.mul
-            this.name = null
-            this.fullname = null
-            this.tinyname = null
-            this.description = null
-            this.stip = null
-
-            // change context to point to this as a multi-type
-            this.mul[0].parent = this.mul[1].parent = this
-            this.mul[0].parent_ctx = 0
-            this.mul[1].parent_ctx = 1
-        }   // else - type is already updated with 'mul'
-    },
-    _obj: function (opt, depth) {
-        switch (this.mul.length) {
-            case 0: return Type.prototype._obj.call(this, opt, depth)
-            case 1: return this.mul[0]._obj(opt.depth)
-            default: return MulType.prototype._obj.call(this, opt, depth)
-        }
-    },
-    link_children: function () {
-        switch (this.mul.length) {
-            case 0: break
-            case 1: if (this.mul[0].link_children) this.mul[0].link_children(); break
-            default:  MulType.prototype.link_children.call(this)
-        }
-    }
 })
 
 // note that calls to create() have to happen *after* the prototype setup above.
