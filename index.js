@@ -126,12 +126,20 @@ AnyType.prototype = extend(Type.prototype, {
 })
 
 // Array
-function ArrType (props) {
+function ArrType (props, opt) {
     props.arr && props.arr.length || err('cannot define an array type with zero items')
 
     Type.call(this, 'arr', props)
     this.arr = props.arr
     this.is_generic = this.arr[0].name === '*'   // callers should verify that 'any' combined with others becomes simply ['*']
+
+    if (opt && opt.link_children) {
+        var self = this
+        this.arr.forEach(function (t,i) {
+            t.parent = self
+            t.parent_ctx = i
+        })
+    }
 }
 ArrType.prototype = extend(Type.prototype, {
     constructor: ArrType,
@@ -155,14 +163,6 @@ ArrType.prototype = extend(Type.prototype, {
             }
         }
     },
-    link_children: function () {
-        var self = this
-        this.arr.forEach(function (c,i) {
-            if (c.link_children) { c.link_children() }
-            c.parent = self
-            c.parent_ctx = i
-        })
-    }
 })
 
 // Blob
@@ -206,9 +206,19 @@ FltType.prototype = extend(Type.prototype, {
 })
 
 // Multiple
-function MulType (props) {
+function MulType (props, opt) {
     Type.call(this, 'mul', props)
-    this.mul = props.mul || this.name === this.base || err('cannot create multi-type without the "mul" property')
+
+    props.mul || this.name === this.base || err('cannot create multi-type without the "mul" property')
+    this.mul = props.mul || []
+
+    if (opt && opt.link_children) {
+        var self = this
+        this.mul.forEach(function (t,i) {
+            t.parent = self
+            t.parent_ctx = i
+        })
+    }
 }
 MulType.prototype = extend(Type.prototype, {
     constructor: MulType,
@@ -223,14 +233,6 @@ MulType.prototype = extend(Type.prototype, {
         })
         return ret
     },
-    link_children: function () {
-        var self = this
-        this.mul.forEach(function (c,i) {
-            if (c.link_children) { c.link_children() }
-            c.parent = self
-            c.parent_ctx = i
-        })
-    }
 })
 
 // Integer
@@ -263,7 +265,7 @@ function wildcard_regex(s) {
 }
 
 // Object - like record, but has one or more pattern-fields (pfields)
-function ObjType (props) {
+function ObjType (props, opt) {
     Type.call(this, 'obj', props)
 
     this.fields = props.fields || {}            // literal field types - exact match
@@ -282,6 +284,13 @@ function ObjType (props) {
 
     // generic_any means has no key or type specifications at all { '*':'*' }
     this.is_generic_any = this.is_generic && this.match_all.name === '*'
+
+    if (opt && opt.link_children) {
+        var self = this
+        qbobj.for_val(this.fields, function (k, v) { v.parent = self; v.parent_ctx = k })
+        qbobj.for_val(this.pfields, function (k, v) { v.parent = self; v.parent_ctx = k })
+        if (this.match_all) { this.match_all.parent = self; this.match_all.parent_ctx = '*' }
+    }
 }
 ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
@@ -325,25 +334,6 @@ ObjType.prototype = extend(Type.prototype, {
         }
         return ret
     },
-    link_children: function () {
-        var self = this
-        qbobj.for_val(this.fields, function (k,c) {
-            if (c.link_children) {c.link_children()}
-            c.parent = self
-            c.parent_ctx = k
-        })
-        qbobj.for_val(this.pfields, function (k,c) {
-            if (c.link_children) {c.link_children()}
-            c.parent = self
-            c.parent_ctx = k
-        })
-        if (this.match_all) {
-            var c = this.match_all
-            if (c.link_children) {c.link_children()}
-            c.parent = self
-            c.parent_ctx = '*'
-        }
-    }
 })
 
 // String
@@ -484,11 +474,11 @@ function create_base (name) {
 // object and array types share a the same 'any' instance that is
 // in the set.
 function create_types () {
-    var any = _create_base('*')
+    var any = Object.freeze(_create_base('*'))
     var ret = [any]
     var names = ['arr', 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'typ']
     names.forEach(function (n) {
-        ret.push(_create_base(n))
+        ret.push(Object.freeze(_create_base(n)))
     })
     ret.sort(function (a,b) { return a.name > b.name ? 1 : -1 })       // names never equal
     return ret
@@ -530,16 +520,16 @@ var PROPS =
         [ 'b',         'base',          null,           '*',            'Type that the type is based upon / derived from (integer, string, object, array...)'  ],
     ].map(function (r) { return new Prop(r[0], r[1], r[2], r[3], r[4]) } ).sort(function (a,b) { return a.name > b.name ? 1 : -1 })
 
-function create (props) {
+function create (props, opt) {
     var ctor = CONSTRUCTORS[props.base] || err('unknown base type: ' + props.base)
     ;({N:1,nul:1,null:1, '*':1, t:1,typ:1,type:1}[props.base]) == null || err('type ' + props.base + ' cannot be created using properties - try using lookup() or create_base() instead')
     props.name !== props.base || err('cannot redefine a base type: ' + props.name)
 
-    return new (ctor)(props)
+    return new (ctor)(props, opt)
 }
 
 // A set of re-usable type instances for lookup().
-var TYPES_BY_ALL_NAMES = create_types(new AnyType(type_props('*'))).reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
+var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
 
 // lookup a vanilla base instance - the same instance every time
 function lookup (name) {
