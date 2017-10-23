@@ -44,7 +44,7 @@ function type_props (name) {
 
 function Type (base, props) {
     this.base = base
-    this.code = BASE_CODES[props.base]
+    this.code = BASE_CODES[base]
     this.name = props.name || null
     this.desc = props.desc || null
     if (props.name) {
@@ -58,7 +58,7 @@ function Type (base, props) {
 
     this.stip = props.stip || null
 
-    // these are set if link_children is called
+    // set by parent
     this.parent = null
     this.parent_ctx = null      // context within parent - index for arrays and multi-type, field (key) for objects
 
@@ -370,6 +370,65 @@ NulType.prototype = extend(Type.prototype, {
     constructor: NulType,
 })
 
+// Dynamic type - mimics an anonymous single type added - or multi type of all added types
+function DynType () {
+    Type.call(this, 'any', {})              // set up as 'any' type.
+    this.mul = []                           // same sole property as MulType.  with 2 or more types, we delegate calls of this instance to MulType
+}
+DynType.prototype = extend(Type.prototype, {
+    constructor: DynType,
+    add_type: function (t) {
+        !{mul:1,'*':1}[t.base] || err('DynType cannot add multiple type: ' + t.base)
+        this.mul.push(t)
+        if (this.mul.length === 1) {
+            // mimic single type - this works because type classes are flat with plain properties.
+            Object.keys(t).forEach(function (k) {
+                this[k] = t[k]
+            })
+            // as far as paths, this type doesn't exist - it is just a holder of the type
+            t.parent = this.parent
+            t.parent_ctx = this.parent_ctx
+        } else if (this.mul.length === 2) {
+            // switch to multi-type - clean up old props
+            if (this.fields) {
+                delete this.fields
+                delete this.pfields
+                delete this.match_all
+                delete this.is_generic
+                delete this.is_generic_any
+            } else if (this.arr) {
+                delete this.arr
+            }
+            this.base = 'mul'
+            this.code = BASE_CODES.mul
+            this.name = null
+            this.fullname = null
+            this.tinyname = null
+            this.description = null
+            this.stip = null
+
+            // change context to point to this as a multi-type
+            this.mul[0].parent = this.mul[1].parent = this
+            this.mul[0].parent_ctx = 0
+            this.mul[1].parent_ctx = 1
+        }   // else - type is already updated with 'mul'
+    },
+    _obj: function (opt, depth) {
+        switch (this.mul.length) {
+            case 0: return Type.prototype._obj.call(this, opt, depth)
+            case 1: return this.mul[0]._obj(opt.depth)
+            default: return MulType.prototype._obj.call(this, opt, depth)
+        }
+    },
+    link_children: function () {
+        switch (this.mul.length) {
+            case 0: break
+            case 1: if (this.mul[0].link_children) this.mul[0].link_children(); break
+            default:  MulType.prototype.link_children.call(this)
+        }
+    }
+})
+
 // note that calls to create() have to happen *after* the prototype setup above.
 
 // create codes (used in constructors)
@@ -414,6 +473,9 @@ function create_base (name) {
     if (t == null) {
         return null     // same behavior as lookup()
     }
+    // var ret = new DynType()
+    // ret.add_type(lookup(t.name))
+    // return ret
     return _create_base(t.name)
 }
 
@@ -491,5 +553,5 @@ module.exports = {
     create_base: create_base,
     lookup: lookup,
     props: function () { return PROPS },
-    types: function (opt) { return opt && opt.copy ? create_types(null) : TYPES },
+    types: function () { return TYPES },
 }
