@@ -247,3 +247,29 @@ test('link_children and path', function (t) {
 
     t.end()
 })
+
+test('path with dynamic multi-types', function (t) {
+    // define a type using different instances for each node.  equivalent of:
+    //  > obj2typ({ a: { '$mul': [ 'str', 'my_int_arr' ] }, b: 'str', 'num*': 'int' })
+    var str1 = tbase.create_base('str')
+    var int1 = tbase.create_base('int')
+    var mul1 = tbase.create({base: 'mul', mul: []})
+    t.equal(str1.path(), '')
+
+    mul1.add_type(str1)
+    t.equal(str1.path(), '')
+
+    mul1.add_type(int1)
+    t.equal(str1.path(), '{str}')
+    t.equal(int1.path(), '{int}')
+
+    var obj1 = tbase.create({base: 'obj', fields: {a_multi: mul1}}, {link_children: true})
+    t.equal(str1.path(), 'a_multi{str}')
+    t.equal(int1.path(), 'a_multi{int}')
+
+    var obj2 = tbase.create({base: 'obj', pfields: { nested: obj1 }}, { link_children: true })
+    t.equal(str1.path(), 'nested/a_multi{str}')
+    t.equal(int1.path(), 'nested/a_multi{int}')
+
+    t.end()
+})

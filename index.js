@@ -101,17 +101,23 @@ Type.prototype = {
         var c = this
         while (c && c.parent) {
             var pstr
-            if (typeof c.parent_ctx === 'number') {
-                pstr = '{' + c.base + '}'
-                if (c.parent.base === 'mul') {
-                    c = c.parent                // skip multi-type node (put type with parent_ctx)
+            if (c.parent.base === 'mul') {
+                if (c.parent.mul.length === 1) {
+                    // multi type of one - skip completely
+                    c = c.parent
+                    continue
                 }
-                pstr = (c.parent ? c.parent_ctx : '') + pstr
+                // put type with parent_ctx
+                pstr = (c.parent.parent ? c.parent.parent_ctx : '') + '{' + c.base + '}'
+                c = c.parent.parent
+            } else if (c.parent.base === 'arr') {
+                pstr = c.parent_ctx + '{' + c.base + '}'
+                c = c.parent
             } else {
                 pstr = c.parent_ctx
+                c = c.parent
             }
             path.push(pstr)
-            c = c.parent
         }
         return path.reverse().join('/')
     }
@@ -233,6 +239,11 @@ MulType.prototype = extend(Type.prototype, {
         })
         return ret
     },
+    add_type: function (t) {
+        t.parent = this
+        t.parent_ctx = this.mul.length
+        this.mul.push(t)
+    }
 })
 
 // Integer
