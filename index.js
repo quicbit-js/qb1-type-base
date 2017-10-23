@@ -144,7 +144,7 @@ ArrType.prototype = extend(Type.prototype, {
             var ret = Type.prototype._basic_obj.call(this)
             delete ret.$base
             var arrtypes = this.arr.map(function (t) {
-                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // handle string references
+                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // allow string references
             })
             if (Object.keys(ret).length === 0) {
                 // a vanilla array with $base: 'arr', $array: [...]
@@ -219,7 +219,7 @@ MulType.prototype = extend(Type.prototype, {
         var ret = Type.prototype._basic_obj.call(this)
         delete ret.$base
         ret.$mul = this.mul.map(function (t) {
-            return (typeof t === 'string') ? t : t._obj(opt, depth + 1)     // handle string references
+            return (typeof t === 'string') ? t : t._obj(opt, depth + 1)     // allow string references
         })
         return ret
     },
@@ -312,12 +312,12 @@ ObjType.prototype = extend(Type.prototype, {
         delete ret.$base     // default is 'obj'
         if (Object.keys(this.fields).length) {
             qbobj.map(this.fields, null, function (k, t) {
-                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // handle string references
+                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // allow string references
             }, { init: ret })
         }
         if (Object.keys(this.pfields).length) {
             qbobj.map(this.pfields, null, function (k, t) {
-                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // handle string references
+                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // allow string references
             }, { init: ret })
         }
         if (this.match_all) {

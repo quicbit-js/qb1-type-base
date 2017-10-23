@@ -205,22 +205,33 @@ all logic twice.  DynType solves this problem by accepting type information addi
 any of the given types as it changes.  At the moment a method like obj() is called, DynType will have the 
 base type and properties and even use the same methods as the type that it represents.
 
-## Custom Info
+## Custom Properties (type.cust)
 
 Dynamic types support a custom object property called 'cust' where clients can store information within
 the graph.  This information will be included in the type toString() as well as in obj() calls by default
-under the cust property.  By default this property is defined as an any-type '*' and any data put
-into it will be serialized via type.toString() and type.obj().  The properties serialized can be controlled 
-by setting cust.$type to a narrower type definition, for example:
+under the cust property.  By default this property is defined as an any-type '*' and properties set
+on it will be serialized via type.toString() and type.obj().  The properties serialized can be controlled 
+by setting cust.$type to a more specific definition, for example:
 
+    var obj2typ = require('qb1-type-obj').obj2typ
+    
+    var cust_type = obj2typ({ file: 'str', count: 'int' } })
     mytype.cust = {
-        $type: { file: 'str', count: 'int' } },
-        file: ... 
-        count: ...
+        $type: cust_type,
+        file: 'cache.json', 
+        count: 0
     }
 
-The custom type defined here is a modification of a 'type', so it will show up in serialization as an 
-extension of type, so instead of { $type: 'type', ... } we would see { $type: { $base: 'type', cust: {...} }:
+The custom type defined this way is implemented as an extension of the base 'type', so in serialization
+instead of
+
+    { $type: 'type', $value: ... }, 
+    
+we will would see the extension:
+     
+    { $type: { $base: 'type', cust: { file: 'str', count: 'int' } }, $value: ... }
+
+For example: 
 
     {
         // instead of $type: 'type', we get:
