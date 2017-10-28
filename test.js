@@ -295,13 +295,13 @@ test('path with dynamic multi-types', function (t) {
     //  > obj2typ({ a: { '$mul': [ 'str', 'my_int_arr' ] }, b: 'str', 'num*': 'int' })
     var str1 = tbase.create_base('str')
     var int1 = tbase.create_base('int')
-    var mul1 = tbase.create({base: 'mul', mul: []})
+    var mul1 = tbase.create({base: 'mul', mul: []}, {link_children: true})
     t.equal(str1.path(), '')
 
-    mul1.add_type(str1, {link_children: true})
+    mul1.add_type(str1)
     t.equal(str1.path(), '')
 
-    mul1.add_type(int1, {link_children: true})
+    mul1.add_type(int1)
     t.equal(str1.path(), '{str}')
     t.equal(int1.path(), '{int}')
 

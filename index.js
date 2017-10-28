@@ -219,16 +219,13 @@ FltType.prototype = extend(Type.prototype, {
 //
 function MulType (props, opt) {
     Type.call(this, 'mul', props)
+    this.link_children = opt && opt.link_children || false
 
     props.mul || this.name === this.base || err('cannot create multi-type without the "mul" property')
-    this.mul = props.mul || []
-
-    if (opt && opt.link_children) {
+    this.mul = []
+    if (props.mul) {
         var self = this
-        this.mul.forEach(function (t,i) {
-            t.parent = self
-            t.parent_ctx = i
-        })
+        props.mul.forEach(function (t) { self.add_type(t) })
     }
 }
 MulType.prototype = extend(Type.prototype, {
@@ -248,8 +245,8 @@ MulType.prototype = extend(Type.prototype, {
         })
         return ret
     },
-    add_type: function (t, opt) {
-        if (opt && opt.link_children) {
+    add_type: function (t) {
+        if (this.link_children) {
             t.parent = this
             t.parent_ctx = this.mul.length
         }
