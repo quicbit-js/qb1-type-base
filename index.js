@@ -273,61 +273,122 @@ NumType.prototype = extend(Type.prototype, {
     constructor: NumType,
 })
 
-// return a wild-card regular expression. cache for fast lookup.
-var WILD_EXPR = {}
-function wildcard_regex(s) {
-    var ret = WILD_EXPR[s]
-    if (!ret) {
-        var ns = s.replace(/[-[\]{}()+?.,\\^$|#\s]/g, '\\$&');  // escape everything except '*'
-        ns = '^' + ns.replace(/[*]/g, '.*')  + '$'        // xyz*123 -> ^xyz.*123$
-        ret = new RegExp(ns)
-        WILD_EXPR[s] = ret
+// handling two-levels of escaping is tricky with regex.  this unescape of caret sequences is simpler than
+// my attempts at pure/simple regex.  it tracks
+// wild-card escapes in a separate wild_lit array for later processing (to interpret as literal '*' instead of match-all).
+function unesc_caret(s) {
+    var wild_lit = []
+    var ns = ''
+    var i = 0
+    var last = 0
+    while (i < s.length) {
+        if (s[i] === '^') {
+            i+1 < s.length || err('dangling escape ^')
+            ns += s.substring(last, i)
+            last = i+1                                      // includes escaped character ^^ -> ^, ^* -> *, ^x -> x...
+            if (s[i+1] === '*') {
+                wild_lit[ns.length] = 1
+            }
+            i += 2
+        } else {
+            i ++
+        }
     }
-    return ret
+    ns += s.substring(last)
+    return { s: ns, wild_lit: wild_lit }
+}
+
+function escape_wildcards(s) {
+    var info = unesc_caret(s)
+
+    var bslash_escape = function (c, off) {
+        if (c === '*' && !info.wild_lit[off]) {
+            return '.*'
+        } else {
+            return '\\' + c     // just escape it
+        }
+    }
+    var ns = info.s.replace(/[-[\]{}()+?.,\\$|*^#\s]/g, bslash_escape)
+
+    return ns
+}
+
+// return true if string s has character c and is not preceded by an odd number of consecutive escapes e)
+function has_char (s, c, e) {
+    var i = 0
+    while ((i = s.indexOf(c, i)) !== -1) {
+        for (var n = 1; s[i-n] === e; n++) {}  // n = preceeding escape count (+1)
+        if (n % 2) {
+            return true
+        }
+        i++
+    }
+    return false
 }
 
 // Object - like record, but has one or more pattern-fields (pfields)
 function ObjType (props, opt) {
+    props.obj && Object.keys(props.obj).length || err('cannot define object type with zero items')
+
     Type.call(this, 'obj', props)
 
-    this.fields = props.fields || {}            // literal field types - exact match
-    this.pfields = props.pfields || {}          // pattern field types (expression match)
-    this.match_all = props.match_all            // the '*' field type - matches all unmatched fields
+    var fields = {}             // literal field types - exact match.  keys are unescaped and ready for literal match.
+    var pfields = {}            // pattern field types (expression match with wild-cards *)
+    var match_all = null        // the '*' field type - matches all unmatched fields (catch-all)
 
-    !this.pfields['*'] || err('use match_all')
+    var obj = props.obj
+    Object.keys(obj).forEach(function (k) {
+        if (k === '*') {
+            match_all = obj[k]
+        } else if (has_char(k, '*', '^')) {
+            pfields[k] = obj[k]
+        } else {
+            var nk = unesc_caret(k).s
+            fields[nk] = obj[k]
+        }
+    })
 
-    var fkeys = Object.keys(this.fields)
-    var pfkeys = Object.keys(this.pfields)
+    this.fields = Object.keys(fields).length ? fields : null
+    this.pfields = Object.keys(pfields).length ? pfields : null
+    this.match_all = match_all
+    this.wild_regex = this.pfields ? {} : null      // lazy-container for regular expressions for keys
 
-    fkeys.length || pfkeys.length || this.match_all || err('no field types defined')
+    // create an object of all fields in order of literals, patterns, then match-all with same keys as given.
+    // this redundant structure of all fields simplifies generic traversal, while the separate structures
+    // simplify pattern handling.
+    this.all = qbobj.map(fields, null, null)
+    this.all = qbobj.map(pfields, null, null, {init: this.all})
+    if (this.match_all) { this.all['*'] = this.match_all}
 
     // generic means has *no* key specifications { '*': 'some-type' }
-    this.is_generic = fkeys.length === 0 && pfkeys.length === 0
+    this.is_generic = !this.fields && !this.pfields
 
     // generic_any means has no key or type specifications at all { '*':'*' }
     this.is_generic_any = this.is_generic && this.match_all.name === '*'
 
     if (opt && opt.link_children) {
         var self = this
-        qbobj.for_val(this.fields, function (k, v) { v.parent = self; v.parent_ctx = k })
-        qbobj.for_val(this.pfields, function (k, v) { v.parent = self; v.parent_ctx = k })
-        if (this.match_all) { this.match_all.parent = self; this.match_all.parent_ctx = '*' }
+        qbobj.for_val(this.all, function (k,v) { v.parent = self; v.parent_ctx = k })
     }
 }
 ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
     fieldtyp: function (n) {
-        var t = this.fields[n]
-        if (t) {
-            return t
+        if (this.fields && this.fields[n] ) {
+            return this.fields[n]
         }
 
-        var pf_keys = Object.keys(this.pfields)
-        for (var i=0; i<pf_keys.length; i++) {
-            var k = pf_keys[i]
-            var re =  wildcard_regex(k)
-            if (re.test(n)) {
-                return this.pfields[k]
+        if (this.pfields) {
+            var pf_keys = Object.keys(this.pfields)
+            for (var i=0; i<pf_keys.length; i++) {
+                var k = pf_keys[i]
+                var re = this.wild_regex[k]
+                if (!re) {
+                    re = this.wild_regex[k] = new RegExp('^' + escape_wildcards(k) + '$')
+                }
+                if (re.test(n)) {
+                    return this.pfields[k]
+                }
             }
         }
 
@@ -341,20 +402,9 @@ ObjType.prototype = extend(Type.prototype, {
         }
         var ret = Type.prototype._basic_obj.call(this)
         delete ret.$base     // default is 'obj'
-        if (Object.keys(this.fields).length) {
-            qbobj.map(this.fields, null, function (k, t) {
-                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // allow string references
-            }, { init: ret })
-        }
-        if (Object.keys(this.pfields).length) {
-            qbobj.map(this.pfields, null, function (k, t) {
-                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // allow string references
-            }, { init: ret })
-        }
-        if (this.match_all) {
-            ret['*'] = this.match_all._obj(opt, depth + 1)
-        }
-        return ret
+        return qbobj.map(this.all, null, function (k, t) {
+            return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // allow string references
+        }, { init: ret })
     },
 })
 
@@ -413,41 +463,38 @@ function _create_base (name, any) {
             props = assign(props, {arr: [any || new AnyType(type_props('*'))]})
             break
         case 'obj':
-            props = assign(props, {match_all: any || new AnyType(type_props('*'))})
+            props = assign(props, {obj: { '*': any || new AnyType(type_props('*'))}})
             break
         // other type props are just vanilla name, description...
     }
     return new ctor(props)
 }
 
-// public version of create_base - works like lookup(), but creates a new vanilla base type instance.
+// public version of create_base - works like lookup(), but creates a new mutable base instance.
 function create_base (name) {
     var t = TYPES_BY_ALL_NAMES[name]
     if (t == null) {
         return null     // same behavior as lookup()
     }
-    // var ret = new DynType()
-    // ret.add_type(lookup(t.name))
-    // return ret
     return _create_base(t.name)
 }
 
-// Return an instance of every base type (all have base === name, which is
+// Return an immutable instance of every base type (all have base === name, which is
 // not possible for types created with the public create(props) function.
 // object and array types share a the same 'any' instance that is
 // in the set.
-function create_types () {
-    var any = Object.freeze(_create_base('*'))
+function create_immutable_types () {
+    var any = _create_base('*')
     var ret = [any]
     var names = ['arr', 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'typ']
     names.forEach(function (n) {
-        ret.push(Object.freeze(_create_base(n)))
+        ret.push(_create_base(n, any))
     })
     ret.sort(function (a,b) { return a.name > b.name ? 1 : -1 })       // names never equal
-    return ret
+    return ret.map(function (t) { t.IMMUTABLE = true; return Object.freeze(t) })
 }
 
-var TYPES = create_types()
+var TYPES = create_immutable_types()
 
 function Prop(tinyname, name, fullname, type, desc) {
     this.name = name
@@ -507,4 +554,9 @@ module.exports = {
     lookup: lookup,
     props: function () { return PROPS },
     types: function () { return TYPES },
+
+    // exposed for testing only
+    _unesc_caret: unesc_caret,
+    _escape_wildcards: escape_wildcards,
+    _has_char: has_char,
 }
