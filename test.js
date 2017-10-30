@@ -368,3 +368,9 @@ test('escape_wildcards', function (t) {
         // [ '^^^^*.^*',             '\\^\\^.*\\..\\*' ],
     ], tbase._escape_wildcards)
 })
+
+test('BASE_CODES', function (t) {
+    t.plan(1)
+    var exp = tbase.types().reduce(function (m, typ) { m[typ.name] = typ.tinyname.charCodeAt(0); return m }, {})
+    t.same(tbase.codes_by_name(), exp, t.desc('codes by name', [], exp))
+})

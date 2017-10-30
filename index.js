@@ -18,7 +18,7 @@ var assign = require('qb-assign')
 var extend = require('qb-extend-flat')
 var qbobj = require('qb1-obj')
 
-var TYPE_DATA = {
+var TYPE_DATA_BY_NAME = {
 // name
     //   tinyname  fullname  description
     '*': [ '*',   'any',     'Represents any value or type.  For example, [*] is an array of anything' ],
@@ -37,14 +37,33 @@ var TYPE_DATA = {
     typ: [ 't',   'type',    'The type-type. integer, array, object, boolean, etc, all have this as their type.'  ],
 }
 
+var CODES_BY_NAME = qbobj.map(TYPE_DATA_BY_NAME,  null, function (k, v) { return v[0].charCodeAt(0) })
+
+var CONSTRUCTORS = {
+    '*': AnyType,
+    arr: ArrType,
+    boo: BooType,
+    blb: BlbType,
+    byt: BytType,
+    dec: DecType,
+    flt: FltType,
+    mul: MulType,
+    int: IntType,
+    nul: NulType,
+    num: NumType,
+    obj: ObjType,
+    str: StrType,
+    typ: TypType,
+}
+
 function type_props (name) {
-    var r = TYPE_DATA[name]
+    var r = TYPE_DATA_BY_NAME[name]
     return { name: name, tinyname: r[0], fullname: r[1], desc: r[2] }
 }
 
 function Type (base, props) {
     this.base = base
-    this.code = BASE_CODES[base]
+    this.code = CODES_BY_NAME[base]
     this.name = props.name || null
     this.desc = props.desc || null
     if (props.name) {
@@ -217,9 +236,11 @@ FltType.prototype = extend(Type.prototype, {
 // clients to construct an initial graph and expand types as new types are discovered.  path() and typ2obj handling
 // have been updated to gracefully ignore / step-over multitypes holding a single child type.
 //
+// opt
+//      link_children                           if truthy, then children added child types will be linked to this type (bidirectional graph)
 function MulType (props, opt) {
     Type.call(this, 'mul', props)
-    this.link_children = opt && opt.link_children || false
+    this.link_children = !!(opt && opt.link_children)
 
     props.mul || this.name === this.base || err('cannot create multi-type without the "mul" property')
     this.mul = []
@@ -329,44 +350,13 @@ function ObjType (props, opt) {
 
     Type.call(this, 'obj', props)
 
-    var fields = {}             // literal field types - exact match.  keys are unescaped and ready for literal match.
-    var pfields = {}            // pattern field types (expression match with wild-cards *)
-    var match_all = null        // the '*' field type - matches all unmatched fields (catch-all)
+    this.fields = null
+    this.pfields = null
+    this.match_all = null
+    this.link_children = opt && opt.link_children
 
-    var obj = props.obj
-    Object.keys(obj).forEach(function (k) {
-        if (k === '*') {
-            match_all = obj[k]
-        } else if (has_char(k, '*', '^')) {
-            pfields[k] = obj[k]
-        } else {
-            var nk = unesc_caret(k).s
-            fields[nk] = obj[k]
-        }
-    })
-
-    this.fields = Object.keys(fields).length ? fields : null
-    this.pfields = Object.keys(pfields).length ? pfields : null
-    this.match_all = match_all
-    this.wild_regex = this.pfields ? {} : null      // lazy-container for regular expressions for keys
-
-    // create an object of all fields in order of literals, patterns, then match-all with same keys as given.
-    // this redundant structure of all fields simplifies generic traversal, while the separate structures
-    // simplify pattern handling.
-    this.all = qbobj.map(fields, null, null)
-    this.all = qbobj.map(pfields, null, null, {init: this.all})
-    if (this.match_all) { this.all['*'] = this.match_all}
-
-    // generic means has *no* key specifications { '*': 'some-type' }
-    this.is_generic = !this.fields && !this.pfields
-
-    // generic_any means has no key or type specifications at all { '*':'*' }
-    this.is_generic_any = this.is_generic && this.match_all.name === '*'
-
-    if (opt && opt.link_children) {
-        var self = this
-        qbobj.for_val(this.all, function (k,v) { v.parent = self; v.parent_ctx = k })
-    }
+    var self = this
+    qbobj.for_val(props.obj, function (k,v) { self.add_field(k,v) })
 }
 ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
@@ -391,17 +381,57 @@ ObjType.prototype = extend(Type.prototype, {
 
         return this.match_all || null
     },
+    add_field: function (expr, type) {
+        if (expr === '*') {
+            this.match_all = type
+        } else if (has_char(expr, '*', '^')) {
+            if (!this.pfields) {
+                this.pfields = {}
+                this.wild_regex = {}
+            } else if (this.wild_regex[expr]) {
+                delete this.wild_regex[expr]
+            }
+            this.pfields[expr] = type
+        } else {
+            if (!this.fields) { this.fields = {} }
+            var nk = unesc_caret(expr).s        // no wild cards to worry about
+            this.fields[nk] = type
+        }
+
+        if (this.link_children) {
+            type.parent = this
+            type.parent_ctx = expr
+        }
+
+        // generic means has *no* key specifications { '*': 'some-type' }
+        this.is_generic = !this.fields && !this.pfields
+
+        // generic_any means has no key or type specifications at all { '*':'*' }
+        this.is_generic_any = this.is_generic && this.match_all.name === '*'
+    },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
             // the base object instance is given a familiar object look '{}' - which is fine because
             // fieldless objects are checked/blocked.  created objects with same any-pattern are returned as {'*':'*'}
             return this.name === 'obj' ? {} : this.name
         }
+        // return field types in order of basic/common props, fields, pfields, then match-all
         var ret = Type.prototype._basic_obj.call(this)
         delete ret.$base     // default is 'obj'
-        return qbobj.map(this.all, null, function (k, t) {
-            return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // allow string references
-        }, { init: ret })
+        if (this.fields) {
+            qbobj.map(this.fields, null, function (k, t) {
+                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // allow string references
+            }, { init: ret })
+        }
+        if (this.pfields) {
+            qbobj.map(this.pfields, null, function (k, t) {
+                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // allow string references
+            }, { init: ret })
+        }
+        if (this.match_all) {
+            ret['*'] = typeof this.match_all === 'string' ? this.match_all : this.match_all._obj(opt, depth + 1)
+        }
+        return ret
     },
 })
 
@@ -428,28 +458,6 @@ function NulType (props) {
 NulType.prototype = extend(Type.prototype, {
     constructor: NulType,
 })
-
-// note that calls to create() have to happen *after* the prototype setup above.
-
-// create codes (used in constructors)
-var BASE_CODES = qbobj.map(TYPE_DATA,  null, function (k, v) { return v[0].charCodeAt(0) })
-
-var CONSTRUCTORS = {
-    '*': AnyType,
-    arr: ArrType,
-    boo: BooType,
-    blb: BlbType,
-    byt: BytType,
-    dec: DecType,
-    flt: FltType,
-    mul: MulType,
-    int: IntType,
-    nul: NulType,
-    num: NumType,
-    obj: ObjType,
-    str: StrType,
-    typ: TypType,
-}
 
 // create a vanilla base type using the given 'any' instance for array/object - (if any is not given, a new 'any' instance will be created for array/object types)
 function _create_base (name, any) {
@@ -490,8 +498,6 @@ function create_immutable_types () {
     ret.sort(function (a,b) { return a.name > b.name ? 1 : -1 })       // names never equal
     return ret.map(function (t) { t.IMMUTABLE = true; return Object.freeze(t) })
 }
-
-var TYPES = create_immutable_types()
 
 function Prop(tinyname, name, fullname, type, desc) {
     this.name = name
@@ -535,15 +541,19 @@ function create (props, opt) {
     return new (ctor)(props, opt)
 }
 
-// A set of re-usable type instances for lookup().
-var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
+function err (msg) { throw Error(msg) }
 
 // lookup a vanilla base instance - the same instance every time
 function lookup (name) {
     return TYPES_BY_ALL_NAMES[name]
 }
 
-function err (msg) { throw Error(msg) }
+// *** FINISH PROTOTYPE SETUP ***
+
+// Create a single set of base types
+
+var TYPES = create_immutable_types()
+var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
 
 module.exports = {
     create: create,
@@ -551,6 +561,7 @@ module.exports = {
     lookup: lookup,
     props: function () { return PROPS },
     types: function () { return TYPES },
+    codes_by_name: function () { return CODES_BY_NAME },
 
     // exposed for testing only
     _unesc_caret: unesc_caret,
