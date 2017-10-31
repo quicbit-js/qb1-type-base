@@ -39,29 +39,28 @@ test('types', function (t) {
 
 test('lookup', function (t) {
     t.table_assert([
-        [ 'name',                                   'exp' ],
-        [ 's',                                      { same_instance: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', IMMUTABLE: true } ],
-        [ 'str',                                    { same_instance: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', IMMUTABLE: true } ],
-        [ 'string',                                 { same_instance: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', IMMUTABLE: true } ],
-        [ 'typ',                                    { same_instance: true, name: 'typ', tinyname: 't', fullname: 'type', base: 'typ', IMMUTABLE: true } ],
-    ], function (name) {
-        var t = tbase.lookup(name)
-        var ret = { same_instance: tbase.lookup(name) === t }
+        [ 'name',            'opt',                       'exp' ],
+        [ 's',               null,                       { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', IMMUTABLE: true } ],
+        [ 'str',             null,                       { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', IMMUTABLE: true } ],
+        [ 'string',          null,                       { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', IMMUTABLE: true } ],
+        [ 'object',          null,                       { same_inst: true, name: 'obj', tinyname: 'o', fullname: 'object', base: 'obj', IMMUTABLE: true }],
+        [ 'arr',             null,                       { same_inst: true, name: 'arr', tinyname: 'a', fullname: 'array', base: 'arr', IMMUTABLE: true } ],
+        [ 'typ',             null,                       { same_inst: true, name: 'typ', tinyname: 't', fullname: 'type', base: 'typ', IMMUTABLE: true } ],
+        [ 'any',             null,                       { same_inst: true, name: '*', tinyname: '*', fullname: 'any', base: '*', IMMUTABLE: true } ],
+        [ 's',               {create_opt:{}},            { same_inst: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
+        [ 'str',             {create_opt:{}},            { same_inst: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
+        [ 'string',          {create_opt:{}},            { same_inst: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
+        [ 'object',          {create_opt:{}},            { same_inst: false, name: 'obj', tinyname: 'o', fullname: 'object', base: 'obj' }],
+        [ 'arr',             {create_opt:{}},            { same_inst: false, name: 'arr', tinyname: 'a', fullname: 'array', base: 'arr' } ],
+        [ 'typ',             {create_opt:{}},            { same_inst: false, name: 'typ', tinyname: 't', fullname: 'type', base: 'typ' } ],
+        [ 'any',             {create_opt:{}},            { same_inst: false, name: '*', tinyname: '*', fullname: 'any', base: '*'} ],
+        [ 'foo',             null,                       null ],
+        [ 'foo',             {create_opt:{}},            null ],
+    ], function (name, opt) {
+        var t = tbase.lookup(name, opt)
+        if (t === null) { return null }
+        var ret = { same_inst: tbase.lookup(name) === t }
         return qbobj.select(t, ['name', 'tinyname', 'fullname', 'base', 'IMMUTABLE'], {init: ret})
-    })
-})
-
-test('create_base', function (t) {
-    t.table_assert([
-        [ 'name',                                   'exp' ],
-        [ 's',                                      { same_instance: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
-        [ 'str',                                    { same_instance: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
-        [ 'string',                                 { same_instance: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
-        [ 'typ',                                    { same_instance: false, name: 'typ', tinyname: 't', fullname: 'type', base: 'typ' } ],
-    ], function (name) {
-        var t = tbase.create_base(name)
-        var ret = { 'same_instance': tbase.lookup(name) === t}
-        return qbobj.select(t, ['name', 'tinyname', 'fullname', 'base'], {init: ret})
     })
 })
 
@@ -233,32 +232,21 @@ test('obj() with references', function (t) {
     })
 })
 
-test('create_base', function (t) {
-    t.table_assert([
-        [ 'name',                       'exp' ],
-        [ 'string',                     {base: 'str', name: 'str'} ],
-        [ 'array',                      {base: 'arr', name: 'arr'} ],
-        [ 'object',                     {base: 'obj', name: 'obj'} ],
-        [ 'foo',                        null ],
+test('linking and path', function (t) {
+    // curry lookup and create to create instances with link_children
+    var create = function (props) { return tbase.create(props, {link_children: true})}
+    var lookup = function (name) { return tbase.lookup(name, {create_opt: {link_children: true}})}
 
-    ], function (name) {
-        var t = tbase.create_base(name)
-        if (t == null) { return null }
-        return qbobj.select(t, ['base', 'name', 'IMMUTABLE'])       // expect create_base to not return IMMUTABLE (like lookup does)
-    })
-})
-
-test('link_children and path', function (t) {
     // define a type using different instances for each node.  equivalent of:
     //  > obj2typ({ a: { '$mul': [ 'str', 'my_int_arr' ] }, b: 'str', 'num*': 'int' })
-    var str1 = tbase.create_base('str')
-    var str2 = tbase.create_base('str')
-    var num1 = tbase.create_base('num')
-    var my_int = tbase.create({base: 'int', name: 'my_int'})
-    var my_int_arr = tbase.create({base: 'arr', name: 'my_int_arr', arr: [ my_int ]}, {link_children: true})
-    var int = tbase.create_base('int')
-    var mul = tbase.create({base: 'mul', mul: [str1, my_int_arr]}, {link_children: true})
-    var obj = tbase.create({base: 'obj', obj: {a:mul, b:str2, '*':num1, 'num*':int}}, {link_children: true})
+    var str1 = lookup('str')
+    var str2 = lookup('str')
+    var num1 = lookup('num')
+    var my_int = create({base: 'int', name: 'my_int'})
+    var my_int_arr = create({base: 'arr', name: 'my_int_arr', arr: [ my_int ]})
+    var int = lookup('int')
+    var mul = create({base: 'mul', mul: [str1, my_int_arr]})
+    var obj = create({base: 'obj', obj: {a:mul, b:str2, '*':num1, 'num*':int}})
 
     t.equal(mul.parent, obj)
     t.equal(mul.parent_ctx, 'a')
@@ -291,11 +279,15 @@ test('link_children and path', function (t) {
 })
 
 test('path with dynamic multi-types', function (t) {
+    // curry lookup and create to create instances with link_children
+    var create = function (props) { return tbase.create(props, {link_children: true})}
+    var lookup = function (name) { return tbase.lookup(name, {create_opt: {link_children: true}})}
+
     // define a type using different instances for each node.  equivalent of:
     //  > obj2typ({ a: { '$mul': [ 'str', 'my_int_arr' ] }, b: 'str', 'num*': 'int' })
-    var str1 = tbase.create_base('str')
-    var int1 = tbase.create_base('int')
-    var mul1 = tbase.create({base: 'mul', mul: []}, {link_children: true})
+    var str1 = lookup('str')
+    var int1 = lookup('int')
+    var mul1 = create({base: 'mul', mul: []})
     t.equal(str1.path(), '')
 
     mul1.add_type(str1)
@@ -305,11 +297,11 @@ test('path with dynamic multi-types', function (t) {
     t.equal(str1.path(), '{str}')
     t.equal(int1.path(), '{int}')
 
-    var obj1 = tbase.create({base: 'obj', obj: {a_multi: mul1}}, {link_children: true})
+    var obj1 = create({base: 'obj', obj: {a_multi: mul1}})
     t.equal(str1.path(), 'a_multi{str}')
     t.equal(int1.path(), 'a_multi{int}')
 
-    var obj2 = tbase.create({base: 'obj', obj: { nested: obj1 }}, { link_children: true })
+    var obj2 = create({base: 'obj', obj: { nested: obj1 }})
     t.equal(str1.path(), 'nested/a_multi{str}')
     t.equal(int1.path(), 'nested/a_multi{int}')
 

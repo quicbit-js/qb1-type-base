@@ -465,41 +465,16 @@ NulType.prototype = extend(Type.prototype, {
     constructor: NulType,
 })
 
-// create a vanilla base type using the given 'any' instance for array/object - (if any is not given, a new 'any' instance will be created for array/object types)
-function _create_base (name, any) {
-    var ctor = CONSTRUCTORS[name]
-    var props = type_props(name)
-    switch (name) {
-        case 'arr':
-            props = assign(props, {arr: [any || new AnyType(type_props('*'))]})
-            break
-        case 'obj':
-            props = assign(props, {obj: { '*': any || new AnyType(type_props('*'))}})
-            break
-        // other type props are just vanilla name, description...
-    }
-    return new ctor(props)
-}
-
-// public version of create_base - works like lookup(), but creates a new mutable base instance.
-function create_base (name) {
-    var t = TYPES_BY_ALL_NAMES[name]
-    if (t == null) {
-        return null     // same behavior as lookup()
-    }
-    return _create_base(t.name)
-}
-
 // Return an immutable instance of every base type (all have base === name, which is
 // not possible for types created with the public create(props) function.
 // object and array types share a the same 'any' instance that is
 // in the set.
 function create_immutable_types () {
-    var any = _create_base('*')
+    var any = lookup('*', {create_opt: {}})
     var ret = [any]
     var names = ['arr', 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'typ']
     names.forEach(function (n) {
-        ret.push(_create_base(n, any))
+        ret.push(lookup(n, {create_opt: {reuse_any: any}}))
     })
     ret.sort(function (a,b) { return a.name > b.name ? 1 : -1 })       // names never equal
     return ret.map(function (t) { t.IMMUTABLE = true; return Object.freeze(t) })
@@ -549,10 +524,45 @@ function create (props, opt) {
 
 function err (msg) { throw Error(msg) }
 
-// lookup a vanilla base instance - the same instance every time
-function lookup (name) {
-    return TYPES_BY_ALL_NAMES[name]
+// lookup a base type.  return the shared immutible instance or create a new copy using 'create_opt'.
+// return null if not defined.
+//
+// opt
+//      create_opt      same options supported by create (e.g. {link_children:true}).  if set
+//                      then a new mutable instance is returned using create(<base_props>, opt).
+//                      if not set, then the immutable shared base instance is returned
+//
+//      reuse_any       an instance of the 'any' type.  If given, this instance is used to construct the generic
+//                      obj and arr types rather than creating new any instances.
+//
+//
+function lookup (name, opt) {
+    if (opt && opt.create_opt) {
+        // create a new instance rather than returning the single immutable type
+        var ctor = CONSTRUCTORS[name]
+        if (ctor == null && TYPES_BY_ALL_NAMES) {
+            var t = TYPES_BY_ALL_NAMES[name]        // broaden search to include tinyname and fullname (post-initialization)
+            if (t == null) { return null }
+            ctor = CONSTRUCTORS[t.name]
+            name = t.name                           // normalize name
+        }
+        var any = opt && opt.reuse_any || null
+        var props = type_props(name)
+        switch (name) {
+            case 'arr':
+                props = assign(props, {arr: [any || new AnyType(type_props('*'))]})
+                break
+            case 'obj':
+                props = assign(props, {obj: { '*': any || new AnyType(type_props('*'))}})
+                break
+            // other type props are just vanilla name, description...
+        }
+        return new ctor(props, opt)
+    } else {
+        return TYPES_BY_ALL_NAMES[name] || null
+    }
 }
+
 
 // *** FINISH PROTOTYPE SETUP ***
 
@@ -563,7 +573,6 @@ var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname]
 
 module.exports = {
     create: create,
-    create_base: create_base,
     lookup: lookup,
     props: function () { return PROPS },
     types: function () { return TYPES },
