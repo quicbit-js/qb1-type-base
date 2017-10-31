@@ -77,7 +77,7 @@ function Type (base, props) {
 
     this.stip = props.stip || null
 
-    // set by parent
+    // these may be set by parent
     this.parent = null
     this.parent_ctx = null      // context within parent - index for arrays and multi-type, field (key) for objects
 
@@ -155,19 +155,25 @@ function ArrType (props, opt) {
     props.arr && props.arr.length || err('cannot define an array type with zero items')
 
     Type.call(this, 'arr', props)
-    this.arr = props.arr
-    this.is_generic = this.arr[0].name === '*'   // callers should verify that 'any' combined with others becomes simply ['*']
 
-    if (opt && opt.link_children) {
-        var self = this
-        this.arr.forEach(function (t,i) {
-            t.parent = self
-            t.parent_ctx = i
-        })
-    }
+    this.arr = []
+    this.link_children = opt && opt.link_children
+
+    var self = this
+    props.arr.forEach(function (t) { self.add_type(t) })
 }
+
 ArrType.prototype = extend(Type.prototype, {
     constructor: ArrType,
+    add_type: function (t) {
+        var i = this.arr.length
+        this.arr[i] = t
+        if (this.link_children) {
+            t.parent = this
+            t.parent_ctx = i
+        }
+        this.is_generic = (i === 0 && this.arr[0].name === '*')
+    },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
             // the base array instance is given a familiar object look '[]' - which is fine because
@@ -407,7 +413,7 @@ ObjType.prototype = extend(Type.prototype, {
         this.is_generic = !this.fields && !this.pfields
 
         // generic_any means has no key or type specifications at all { '*':'*' }
-        this.is_generic_any = this.is_generic && this.match_all.name === '*'
+        this.is_generic_any = this.is_generic && (this.match_all && this.match_all.name === '*')
     },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
