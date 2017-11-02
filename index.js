@@ -356,19 +356,23 @@ function ObjType (props, opt) {
 
     Type.call(this, 'obj', props)
 
-    this.fields = null
-    this.pfields = null
-    this.match_all = null
+    this.sfields = null         // vanilla string fields
+    this.pfields = null         // pattern match fields
+    this.match_all = null       // the special '*' match-everything fields
+    this._fields = null         // lazy cache of all fields kept in order of sfields, pfields, then match_all - for efficient public view of all fields
     this.link_children = opt && opt.link_children
 
     var self = this
     qbobj.for_val(props.obj, function (k,v) { self.add_field(k,v) })
+    if (opt && opt.immutable) {
+        this.fields     // trigger lazy-create of object fields
+    }
 }
 ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
     fieldtyp: function (n) {
-        if (this.fields && this.fields[n] ) {
-            return this.fields[n]
+        if (this.sfields && this.sfields[n] ) {
+            return this.sfields[n]
         }
 
         if (this.pfields) {
@@ -399,9 +403,9 @@ ObjType.prototype = extend(Type.prototype, {
             }
             this.pfields[expr] = type
         } else {
-            if (!this.fields) { this.fields = {} }
+            if (!this.sfields) { this.sfields = {} }
             var nk = unesc_caret(expr).s        // no wild cards to worry about
-            this.fields[nk] = type
+            this.sfields[nk] = type
         }
 
         if (this.link_children) {
@@ -410,10 +414,22 @@ ObjType.prototype = extend(Type.prototype, {
         }
 
         // generic means has *no* key specifications { '*': 'some-type' }
-        this.is_generic = !this.fields && !this.pfields
+        this.is_generic = !this.sfields && !this.pfields
 
         // generic_any means has no key or type specifications at all { '*':'*' }
         this.is_generic_any = this.is_generic && (this.match_all && this.match_all.name === '*')
+        this._fields = null         // reset
+    },
+    // return all fields in order of sfields, pfields, then match_all
+    get fields() {
+        if (this._fields == null) {
+            var ret = {}
+            if (this.sfields) { qbobj.map(this.sfields, null, null, { init: ret }) }
+            if (this.pfields) { qbobj.map(this.pfields, null, null, { init: ret }) }
+            if (this.match_all) { ret['*'] = this.match_all }
+            this._fields = ret
+        }
+        return this._fields
     },
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
@@ -421,23 +437,9 @@ ObjType.prototype = extend(Type.prototype, {
             // fieldless objects are checked/blocked.  created objects with same any-pattern are returned as {'*':'*'}
             return this.name === 'obj' ? {} : this.name
         }
-        // return field types in order of basic/common props, fields, pfields, then match-all
         var ret = Type.prototype._basic_obj.call(this)
-        delete ret.$base     // default is 'obj'
-        if (this.fields) {
-            qbobj.map(this.fields, null, function (k, t) {
-                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // allow string references
-            }, { init: ret })
-        }
-        if (this.pfields) {
-            qbobj.map(this.pfields, null, function (k, t) {
-                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // allow string references
-            }, { init: ret })
-        }
-        if (this.match_all) {
-            ret['*'] = typeof this.match_all === 'string' ? this.match_all : this.match_all._obj(opt, depth + 1)
-        }
-        return ret
+        delete ret.$base                                    // default is 'obj'
+        return qbobj.map(this.fields, null, function (k, v) { return typeof v === 'string' ? v : v._obj(opt, depth + 1) }, {init: ret})
     },
 })
 
@@ -470,14 +472,14 @@ NulType.prototype = extend(Type.prototype, {
 // object and array types share a the same 'any' instance that is
 // in the set.
 function create_immutable_types () {
-    var any = lookup('*', {create_opt: {}})
+    var any = lookup('*', {create_opt: {immutable: true}})
     var ret = [any]
     var names = ['arr', 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'typ']
     names.forEach(function (n) {
-        ret.push(lookup(n, {create_opt: {reuse_any: any}}))
+        ret.push(lookup(n, {create_opt: {reuse_any: any, immutable: true}}))
     })
     ret.sort(function (a,b) { return a.name > b.name ? 1 : -1 })       // names never equal
-    return ret.map(function (t) { t.IMMUTABLE = true; return Object.freeze(t) })
+    return ret
 }
 
 function Prop(tinyname, name, fullname, type, desc) {
@@ -516,7 +518,7 @@ var PROPS =
 
 function create (props, opt) {
     var ctor = CONSTRUCTORS[props.base] || err('unknown base type: ' + props.base)
-    ;({N:1,nul:1,null:1, '*':1, t:1,typ:1,type:1}[props.base]) == null || err('type ' + props.base + ' cannot be created using properties - try using lookup() or create_base() instead')
+    ;({N:1,nul:1,null:1, '*':1, t:1,typ:1,type:1}[props.base]) == null || err('type ' + props.base + ' cannot be created using properties, use lookup() instead')
     props.name !== props.base || err('cannot redefine a base type: ' + props.name)
 
     return new (ctor)(props, opt)
@@ -537,7 +539,8 @@ function err (msg) { throw Error(msg) }
 //
 //
 function lookup (name, opt) {
-    if (opt && opt.create_opt) {
+    var create_opt = opt && opt.create_opt
+    if (create_opt) {
         // create a new instance rather than returning the single immutable type
         var ctor = CONSTRUCTORS[name]
         if (ctor == null && TYPES_BY_ALL_NAMES) {
@@ -546,7 +549,7 @@ function lookup (name, opt) {
             ctor = CONSTRUCTORS[t.name]
             name = t.name                           // normalize name
         }
-        var any = opt && opt.reuse_any || null
+        var any = create_opt.reuse_any || null
         var props = type_props(name)
         switch (name) {
             case 'arr':
@@ -557,7 +560,12 @@ function lookup (name, opt) {
                 break
             // other type props are just vanilla name, description...
         }
-        return new ctor(props, opt)
+        var ret = new ctor(props, create_opt)
+        if (create_opt.immutable) {
+            ret.IMMUTABLE = true
+            Object.freeze(ret)
+        }
+        return ret
     } else {
         return TYPES_BY_ALL_NAMES[name] || null
     }
