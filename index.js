@@ -95,7 +95,7 @@ Type.prototype = {
     constructor: Type,
     toString: function () {
         if (this.name) { return this.name }
-        return JSON.stringify(this.obj())
+        return JSON.stringify(this.obj({name_depth: 0}))
     },
     _basic_obj: function () {
         var ret = qbobj.map(this,
@@ -537,9 +537,17 @@ function _create (base, props, opt) {
 
 // public create (accepts all names for base types, disallows creation of 'nul' and 'typ' types and redefinition of base types)
 function create (props, opt) {
-    var t = TYPES_BY_ALL_NAMES[props.base] || err('unknown base type: ' + props.base)
-    ;({N:1,nul:1,null:1, '*':1, t:1,typ:1,type:1}[props.base]) == null || err('type ' + props.base + ' cannot be created using properties, use lookup() instead')
-    props.name !== props.base || err('cannot redefine a base type: ' + props.name)
+    var base = props.base
+    if (base == null) {
+        if (props.arr) { base = 'arr' }
+        else if (props.mul) { base = 'mul' }
+        else if (props.obj) { base = 'obj' }
+        else { err('no base specified') }
+    }
+    var t = TYPES_BY_ALL_NAMES[base] || err('unknown base type: ' + base)
+    // t.name has the normalized base name
+    ;({nul:1, '*':1, typ:1}[t.name]) == null || err('type ' + base + ' cannot be created using properties, use lookup() instead')
+    props.name !== base && props.tinyname !== base && props.fullname !== base || err('cannot redefine a base type: ' + base)
     return _create(t.name, props, opt)
 }
 
@@ -557,18 +565,19 @@ function err (msg) { throw Error(msg) }
 //                      obj and arr types rather than creating new any instances.
 //
 //
-function lookup (name, opt) {
-    var t = TYPES_BY_ALL_NAMES[name]
-    if (t == null) {
+function lookup (base_name, opt) {
+    var base_type = TYPES_BY_ALL_NAMES[base_name]
+    if (base_type == null) {
         return null
     }
+    base_type.name !== 'mul' || err('multi-type cannot be looked up.  each multi type is unique/custom - use create() instead')
     if (opt && opt.create_opt) {
         // return a base with all the same settings as the lookup instance (such as object {'*':'*'}) , but is a copy (for building graphs)
-        var any = (t.name === 'obj' || t.name === 'arr') ? _create('*', type_props('*'), opt.create_opt) : null
-        return _create(t.name, type_props(t.name, any), opt.create_opt)
+        var any = (base_type.name === 'obj' || base_type.name === 'arr') ? _create('*', type_props('*'), opt.create_opt) : null
+        return _create(base_type.name, type_props(base_type.name, any), opt.create_opt)
     } else {
         // return immutable shared instance
-        return t
+        return base_type
     }
 }
 
