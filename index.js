@@ -56,9 +56,17 @@ var CONSTRUCTORS = {
     typ: TypType,
 }
 
-function type_props (name) {
+function type_props (name, any) {
     var r = TYPE_DATA_BY_NAME[name]
-    return { name: name, tinyname: r[0], fullname: r[1], desc: r[2] }
+    var ret = { name: name, tinyname: r[0], fullname: r[1], desc: r[2] }
+    switch (name) {
+        case 'obj':
+            ret = assign(ret, {obj: {'*': any}})
+            break
+        case 'arr':
+            ret = assign(ret, {arr: [any]})
+    }
+    return ret
 }
 
 function Type (base, props) {
@@ -472,13 +480,13 @@ NulType.prototype = extend(Type.prototype, {
 // object and array types share a the same 'any' instance that is
 // in the set.
 function create_immutable_types () {
-    var any = lookup('*', {create_opt: {immutable: true}})
+    var any = _create('*', type_props('*'), {immutable: true})
     var ret = [any]
-    var names = ['arr', 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'typ']
-    names.forEach(function (n) {
-        ret.push(lookup(n, {create_opt: {reuse_any: any, immutable: true}}))
+    ;['arr', 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'typ'].forEach(function (n) {
+        ret.push(_create(n, type_props(n, any), {immutable: true}))
     })
     ret.sort(function (a,b) { return a.name > b.name ? 1 : -1 })       // names never equal
+    Object.freeze(ret)
     return ret
 }
 
@@ -516,12 +524,23 @@ var PROPS =
         [ 'b',         'base',          null,           '*',            'Type that the type is based upon / derived from (integer, string, object, array...)'  ],
     ].map(function (r) { return new Prop(r[0], r[1], r[2], r[3], r[4]) } ).sort(function (a,b) { return a.name > b.name ? 1 : -1 })
 
+function _create (base, props, opt) {
+    opt = opt || {}
+    var ctor = CONSTRUCTORS[base]
+    var ret = new ctor(props, opt)
+    if (opt.immutable) {
+        ret.IMMUTABLE = true
+        Object.freeze(ret)
+    }
+    return ret
+}
+
+// public create (accepts all names for base types, disallows creation of 'nul' and 'typ' types and redefinition of base types)
 function create (props, opt) {
-    var ctor = CONSTRUCTORS[props.base] || err('unknown base type: ' + props.base)
+    var t = TYPES_BY_ALL_NAMES[props.base] || err('unknown base type: ' + props.base)
     ;({N:1,nul:1,null:1, '*':1, t:1,typ:1,type:1}[props.base]) == null || err('type ' + props.base + ' cannot be created using properties, use lookup() instead')
     props.name !== props.base || err('cannot redefine a base type: ' + props.name)
-
-    return new (ctor)(props, opt)
+    return _create(t.name, props, opt)
 }
 
 function err (msg) { throw Error(msg) }
@@ -539,35 +558,17 @@ function err (msg) { throw Error(msg) }
 //
 //
 function lookup (name, opt) {
-    var create_opt = opt && opt.create_opt
-    if (create_opt) {
-        // create a new instance rather than returning the single immutable type
-        var ctor = CONSTRUCTORS[name]
-        if (ctor == null && TYPES_BY_ALL_NAMES) {
-            var t = TYPES_BY_ALL_NAMES[name]        // broaden search to include tinyname and fullname (post-initialization)
-            if (t == null) { return null }
-            ctor = CONSTRUCTORS[t.name]
-            name = t.name                           // normalize name
-        }
-        var any = create_opt.reuse_any || null
-        var props = type_props(name)
-        switch (name) {
-            case 'arr':
-                props = assign(props, {arr: [any || new AnyType(type_props('*'))]})
-                break
-            case 'obj':
-                props = assign(props, {obj: { '*': any || new AnyType(type_props('*'))}})
-                break
-            // other type props are just vanilla name, description...
-        }
-        var ret = new ctor(props, create_opt)
-        if (create_opt.immutable) {
-            ret.IMMUTABLE = true
-            Object.freeze(ret)
-        }
-        return ret
+    var t = TYPES_BY_ALL_NAMES[name]
+    if (t == null) {
+        return null
+    }
+    if (opt && opt.create_opt) {
+        // return a base with all the same settings as the lookup instance (such as object {'*':'*'}) , but is a copy (for building graphs)
+        var any = (t.name === 'obj' || t.name === 'arr') ? _create('*', type_props('*'), opt.create_opt) : null
+        return _create(t.name, type_props(t.name, any), opt.create_opt)
     } else {
-        return TYPES_BY_ALL_NAMES[name] || null
+        // return immutable shared instance
+        return t
     }
 }
 
