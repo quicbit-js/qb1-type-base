@@ -73,7 +73,6 @@ test('create errors', function (t) {
         [ {base: 'typ'},                        /cannot be created using properties/ ],
         [ {base: 'int', tinyname: 'foo' },      /tinyname without name/ ],
         [ {base: 'int', fullname: 'foo' },      /fullname without name/ ],
-        [ {base: 'mul', name: 'foo' },          /cannot create multi-type without the "mul" property/ ],
         [ {base: 'mul', name: 'mul' },          /cannot redefine a base type/ ],
     ], tbase.create, { assert: 'throws' })
 })
@@ -287,23 +286,36 @@ test('path with dynamic multi-types', function (t) {
     //  > obj2typ({ a: { '$mul': [ 'str', 'my_int_arr' ] }, b: 'str', 'num*': 'int' })
     var str1 = lookup('str')
     var int1 = lookup('int')
-    var mul1 = create({base: 'mul', mul: []})
+    var mul1 = create({base: 'mul'})
+
+    t.same(mul1.obj(), { $mul: [] })
+    t.equal(mul1.path(), '')
     t.equal(str1.path(), '')
 
     mul1.add_type(str1)
-    t.equal(str1.path(), '')
+    t.equal(str1.path(), '')            // special case - only multi-type as parent with single type - behave like single type
 
     mul1.add_type(int1)
-    t.equal(str1.path(), '{str}')
+    t.equal(str1.path(), '{str}')       // special case - only multi-type as parent path clarifies which type
     t.equal(int1.path(), '{int}')
 
     var obj1 = create({base: 'obj', obj: {a_multi: mul1}})
     t.equal(str1.path(), 'a_multi{str}')
     t.equal(int1.path(), 'a_multi{int}')
 
-    var obj2 = create({base: 'obj', obj: { nested: obj1 }})
+    var obj2 = create({base: 'obj'})
+    obj2.add_field('nested', obj1)
     t.equal(str1.path(), 'nested/a_multi{str}')
     t.equal(int1.path(), 'nested/a_multi{int}')
+
+    var arr1 = create({base: 'arr'})
+    var num1 = lookup('num')
+    arr1.add_type(num1)
+    t.equal(num1.path(), '0{num}')
+
+    mul1.add_type(arr1)
+    t.equal(num1.path(), 'nested/a_multi{arr}/0{num}')
+    t.same(mul1.obj(), { $mul: [ 'str', 'int', [ 'num' ] ] })
 
     t.end()
 })

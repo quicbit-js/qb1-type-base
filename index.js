@@ -160,15 +160,15 @@ AnyType.prototype = extend(Type.prototype, {
 
 // Array
 function ArrType (props, opt) {
-    props.arr && props.arr.length || err('cannot define an array type with zero items')
-
     Type.call(this, 'arr', props)
 
     this.arr = []
     this.link_children = opt && opt.link_children
 
-    var self = this
-    props.arr.forEach(function (t) { self.add_type(t) })
+    if (props.arr) {
+        var self = this
+        props.arr.forEach(function (t) { self.add_type(t) })
+    }
 }
 
 ArrType.prototype = extend(Type.prototype, {
@@ -256,7 +256,6 @@ function MulType (props, opt) {
     Type.call(this, 'mul', props)
     this.link_children = !!(opt && opt.link_children)
 
-    props.mul || this.name === this.base || err('cannot create multi-type without the "mul" property')
     this.mul = []
     if (props.mul) {
         var self = this
@@ -359,9 +358,12 @@ function has_char (s, c, e) {
 }
 
 // Object - like record, but has one or more pattern-fields (pfields)
+// opt
+//      immutable: create lazy fields up front to prepare for Object.freeze()
+//      ignore_expr: add only literal fields.  ignore expressions (containing '*') - used to create
+//              types for exploring values.  allowing this arg in create helps keep with add-only philosophy
+//              (instead of deleting pfields and match_all)
 function ObjType (props, opt) {
-    props.obj && Object.keys(props.obj).length || err('cannot define object type with zero items')
-
     Type.call(this, 'obj', props)
 
     this.sfields = null         // vanilla string fields
@@ -371,7 +373,9 @@ function ObjType (props, opt) {
     this.link_children = opt && opt.link_children
 
     var self = this
-    qbobj.for_val(props.obj, function (k,v) { self.add_field(k,v) })
+    if (props.obj) {
+        qbobj.for_val(props.obj, function (k,v) { self.add_field(k, v, opt) })
+    }
     if (opt && opt.immutable) {
         this.fields     // trigger lazy-create of object fields
     }
@@ -399,26 +403,26 @@ ObjType.prototype = extend(Type.prototype, {
 
         return this.match_all || null
     },
-    add_field: function (expr, type) {
-        if (expr === '*') {
+    add_field: function (n_or_pat, type, opt) {
+        if (n_or_pat === '*') {
             this.match_all = type
-        } else if (has_char(expr, '*', '^')) {
+        } else if (has_char(n_or_pat, '*', '^')) {
             if (!this.pfields) {
                 this.pfields = {}
                 this.wild_regex = {}
-            } else if (this.wild_regex[expr]) {
-                delete this.wild_regex[expr]
+            } else if (this.wild_regex[n_or_pat]) {
+                delete this.wild_regex[n_or_pat]
             }
-            this.pfields[expr] = type
+            this.pfields[n_or_pat] = type
         } else {
             if (!this.sfields) { this.sfields = {} }
-            var nk = unesc_caret(expr).s        // no wild cards to worry about
+            var nk = unesc_caret(n_or_pat).s        // no wild cards to worry about
             this.sfields[nk] = type
         }
 
         if (this.link_children) {
             type.parent = this
-            type.parent_ctx = expr
+            type.parent_ctx = n_or_pat
         }
 
         // generic means has *no* key specifications { '*': 'some-type' }
@@ -475,10 +479,9 @@ NulType.prototype = extend(Type.prototype, {
     constructor: NulType,
 })
 
-// Return an immutable instance of every base type (all have base === name, which is
-// not possible for types created with the public create(props) function.
-// object and array types share a the same 'any' instance that is
-// in the set.
+// Return immutable instances of all the stand-alone base types using match_all's for obj {*:*} and arr [*].
+// multi-type 'mul' is special in that without a type list it matches nothing, but we allow creation to
+// complete the set of base type names and descriptions.
 function create_immutable_types () {
     var any = _create('*', type_props('*'), {immutable: true})
     var ret = [any]
