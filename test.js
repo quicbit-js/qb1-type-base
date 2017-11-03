@@ -40,13 +40,13 @@ test('types', function (t) {
 test('lookup', function (t) {
     t.table_assert([
         [ 'name',            'opt',                       'exp' ],
-        [ 's',               null,                       { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', IMMUTABLE: true } ],
-        [ 'str',             null,                       { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', IMMUTABLE: true } ],
-        [ 'string',          null,                       { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', IMMUTABLE: true } ],
-        [ 'object',          null,                       { same_inst: true, name: 'obj', tinyname: 'o', fullname: 'object', base: 'obj', IMMUTABLE: true }],
-        [ 'arr',             null,                       { same_inst: true, name: 'arr', tinyname: 'a', fullname: 'array', base: 'arr', IMMUTABLE: true } ],
-        [ 'typ',             null,                       { same_inst: true, name: 'typ', tinyname: 't', fullname: 'type', base: 'typ', IMMUTABLE: true } ],
-        [ 'any',             null,                       { same_inst: true, name: '*', tinyname: '*', fullname: 'any', base: '*', IMMUTABLE: true } ],
+        [ 's',               null,                       { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: true } ],
+        [ 'str',             null,                       { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: true } ],
+        [ 'string',          null,                       { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: true } ],
+        [ 'object',          null,                       { same_inst: true, name: 'obj', tinyname: 'o', fullname: 'object', base: 'obj', immutable: true }],
+        [ 'arr',             null,                       { same_inst: true, name: 'arr', tinyname: 'a', fullname: 'array', base: 'arr', immutable: true } ],
+        [ 'typ',             null,                       { same_inst: true, name: 'typ', tinyname: 't', fullname: 'type', base: 'typ', immutable: true } ],
+        [ 'any',             null,                       { same_inst: true, name: '*', tinyname: '*', fullname: 'any', base: '*', immutable: true } ],
         [ 's',               {create_opt:{}},            { same_inst: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
         [ 'str',             {create_opt:{}},            { same_inst: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
         [ 'string',          {create_opt:{}},            { same_inst: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str' } ],
@@ -60,7 +60,7 @@ test('lookup', function (t) {
         var t = tbase.lookup(name, opt)
         if (t === null) { return null }
         var ret = { same_inst: tbase.lookup(name) === t }
-        return qbobj.select(t, ['name', 'tinyname', 'fullname', 'base', 'IMMUTABLE'], {init: ret})
+        return qbobj.select(t, ['name', 'tinyname', 'fullname', 'base', 'immutable'], {init: ret})
     })
 })
 

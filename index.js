@@ -163,7 +163,7 @@ function ArrType (props, opt) {
     Type.call(this, 'arr', props)
 
     this.arr = []
-    this.link_children = opt && opt.link_children
+    this.link_children = !!(opt && opt.link_children)
 
     if (props.arr) {
         var self = this
@@ -244,14 +244,10 @@ FltType.prototype = extend(Type.prototype, {
     constructor: FltType,
 })
 
-// Multiple Types
+// Multi Type
 //
-// multi is the only type that supports dynamic addition of child values (via add_type()).  It allows
-// clients to construct an initial graph and expand types as new types are discovered.  path() and typ2obj handling
-// have been updated to gracefully ignore / step-over multitypes holding a single child type.
+// Represents any of the types in the multi-type's 'mul' property.
 //
-// opt
-//      link_children                           if truthy, then children added child types will be linked to this type (bidirectional graph)
 function MulType (props, opt) {
     Type.call(this, 'mul', props)
     this.link_children = !!(opt && opt.link_children)
@@ -370,7 +366,7 @@ function ObjType (props, opt) {
     this.pfields = null         // pattern match fields
     this.match_all = null       // the special '*' match-everything fields
     this._fields = null         // lazy cache of all fields kept in order of sfields, pfields, then match_all - for efficient public view of all fields
-    this.link_children = opt && opt.link_children
+    this.link_children = !!(opt && opt.link_children)
 
     var self = this
     if (props.obj) {
@@ -532,13 +528,20 @@ function _create (base, props, opt) {
     var ctor = CONSTRUCTORS[base]
     var ret = new ctor(props, opt)
     if (opt.immutable) {
-        ret.IMMUTABLE = true
+        ret.immutable = true
         Object.freeze(ret)
     }
     return ret
 }
 
 // public create (accepts all names for base types, disallows creation of 'nul' and 'typ' types and redefinition of base types)
+//
+// opt
+//      link_children   if set, then objects, arrays and multi-types will add parent and parent_ctx links to
+//                      added types (children).
+//
+//      immutable       if set, then immutable types will be returned using Object.freeze().
+//
 function create (props, opt) {
     var base = props.base
     if (base == null) {
@@ -564,22 +567,18 @@ function err (msg) { throw Error(msg) }
 //                      then a new mutable instance is returned using create(<base_props>, opt).
 //                      if not set, then the immutable shared base instance is returned
 //
-//      reuse_any       an instance of the 'any' type.  If given, this instance is used to construct the generic
-//                      obj and arr types rather than creating new any instances.
-//
-//
 function lookup (base_name, opt) {
     var base_type = TYPES_BY_ALL_NAMES[base_name]
     if (base_type == null) {
         return null
     }
-    base_type.name !== 'mul' || err('multi-type cannot be looked up.  each multi type is unique/custom - use create() instead')
     if (opt && opt.create_opt) {
         // return a base with all the same settings as the lookup instance (such as object {'*':'*'}) , but is a copy (for building graphs)
         var any = (base_type.name === 'obj' || base_type.name === 'arr') ? _create('*', type_props('*'), opt.create_opt) : null
         return _create(base_type.name, type_props(base_type.name, any), opt.create_opt)
     } else {
         // return immutable shared instance
+        base_type.name !== 'mul' || err('there is no generalized multi-type instance, it has to be created')
         return base_type
     }
 }
