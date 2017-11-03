@@ -69,7 +69,8 @@ function type_props (name, any) {
     return ret
 }
 
-function Type (base, props) {
+function Type (base, props, opt) {
+    this.immutable = !!(opt && opt.immutable)
     this.base = base
     this.code = CODES_BY_NAME[base]
     this.name = props.name || null
@@ -151,8 +152,8 @@ Type.prototype = {
 }
 
 // Any
-function AnyType (props) {
-    Type.call(this, '*', props)
+function AnyType (props, opt) {
+    Type.call(this, '*', props, opt)
 }
 AnyType.prototype = extend(Type.prototype, {
     constructor: AnyType,
@@ -160,7 +161,7 @@ AnyType.prototype = extend(Type.prototype, {
 
 // Array
 function ArrType (props, opt) {
-    Type.call(this, 'arr', props)
+    Type.call(this, 'arr', props, opt)
 
     this.arr = []
     this.link_children = !!(opt && opt.link_children)
@@ -205,40 +206,40 @@ ArrType.prototype = extend(Type.prototype, {
 })
 
 // Blob
-function BlbType (props) {
-    Type.call(this, 'blb', props)
+function BlbType (props, opt) {
+    Type.call(this, 'blb', props, opt)
 }
 BlbType.prototype = extend(Type.prototype, {
     constructor: BlbType,
 })
 
 // Boolean
-function BooType (props) {
-    Type.call(this, 'boo', props)
+function BooType (props, opt) {
+    Type.call(this, 'boo', props, opt)
 }
 BooType.prototype = extend(Type.prototype, {
     constructor: BooType,
 })
 
 // Byte
-function BytType (props) {
-    Type.call(this, 'byt', props)
+function BytType (props, opt) {
+    Type.call(this, 'byt', props, opt)
 }
 BytType.prototype = extend(Type.prototype, {
     constructor: BytType,
 })
 
 // Decimal
-function DecType (props) {
-    Type.call(this, 'dec', props)
+function DecType (props, opt) {
+    Type.call(this, 'dec', props, opt)
 }
 DecType.prototype = extend(Type.prototype, {
     constructor: DecType,
 })
 
 // Float
-function FltType (props) {
-    Type.call(this, 'flt', props)
+function FltType (props, opt) {
+    Type.call(this, 'flt', props, opt)
 }
 FltType.prototype = extend(Type.prototype, {
     constructor: FltType,
@@ -249,7 +250,7 @@ FltType.prototype = extend(Type.prototype, {
 // Represents any of the types in the multi-type's 'mul' property.
 //
 function MulType (props, opt) {
-    Type.call(this, 'mul', props)
+    Type.call(this, 'mul', props, opt)
     this.link_children = !!(opt && opt.link_children)
 
     this.mul = []
@@ -285,16 +286,16 @@ MulType.prototype = extend(Type.prototype, {
 })
 
 // Integer
-function IntType (props) {
-    Type.call(this, 'int', props)
+function IntType (props, opt) {
+    Type.call(this, 'int', props, opt)
 }
 IntType.prototype = extend(Type.prototype, {
     constructor: IntType,
 })
 
 // Number
-function NumType (props) {
-    Type.call(this, 'num', props)
+function NumType (props, opt) {
+    Type.call(this, 'num', props, opt)
 }
 NumType.prototype = extend(Type.prototype, {
     constructor: NumType,
@@ -360,7 +361,7 @@ function has_char (s, c, e) {
 //              types for exploring values.  allowing this arg in create helps keep with add-only philosophy
 //              (instead of deleting pfields and match_all)
 function ObjType (props, opt) {
-    Type.call(this, 'obj', props)
+    Type.call(this, 'obj', props, opt)
 
     this.sfields = null         // vanilla string fields
     this.pfields = null         // pattern match fields
@@ -372,8 +373,8 @@ function ObjType (props, opt) {
     if (props.obj) {
         qbobj.for_val(props.obj, function (k,v) { self.add_field(k, v, opt) })
     }
-    if (opt && opt.immutable) {
-        this.fields     // trigger lazy-create of object fields
+    if (this.immutable) {
+        this.fields     // create object fields before we freeze
     }
 }
 ObjType.prototype = extend(Type.prototype, {
@@ -452,24 +453,24 @@ ObjType.prototype = extend(Type.prototype, {
 })
 
 // String
-function StrType (props) {
-    Type.call(this, 'str', props)
+function StrType (props, opt) {
+    Type.call(this, 'str', props, opt)
 }
 StrType.prototype = extend(Type.prototype, {
     constructor: StrType,
 })
 
 // Type (Type)
-function TypType (props) {
-    Type.call(this, 'typ', props)
+function TypType (props, opt) {
+    Type.call(this, 'typ', props, opt)
 }
 TypType.prototype = extend(Type.prototype, {
     constructor: TypType,
 })
 
 // Null
-function NulType (props) {
-    Type.call(this, 'nul', props)
+function NulType (props, opt) {
+    Type.call(this, 'nul', props, opt)
 }
 NulType.prototype = extend(Type.prototype, {
     constructor: NulType,
@@ -528,7 +529,6 @@ function _create (base, props, opt) {
     var ctor = CONSTRUCTORS[base]
     var ret = new ctor(props, opt)
     if (opt.immutable) {
-        ret.immutable = true
         Object.freeze(ret)
     }
     return ret
