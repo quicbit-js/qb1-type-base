@@ -400,7 +400,7 @@ ObjType.prototype = extend(Type.prototype, {
 
         return this.match_all || null
     },
-    add_field: function (n_or_pat, type, opt) {
+    add_field: function (n_or_pat, type) {
         if (n_or_pat === '*') {
             this.match_all = type
         } else if (has_char(n_or_pat, '*', '^')) {
