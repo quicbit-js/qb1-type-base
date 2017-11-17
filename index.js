@@ -20,24 +20,24 @@ var qbobj = require('qb1-obj')
 
 var TYPE_DATA_BY_NAME = {
 // name
-    //   tinyname  fullname  description
-    '*': [ '*',   'any',     'Represents any value or type.  For example, [*] is an array of anything' ],
-    arr: [ 'a',   'array',   'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]' ],
-    blb: [ 'X',   'blob',    'A sequence of bytes' ],
-    boo: [ 'b',   'boolean', 'A true or false value.  Also can be a 0 or non-zero byte' ],
-    byt: [ 'x',   'byte',    'An integer in range 0..255'   ],
-    dec: [ 'd',   'decimal', 'An unbounded base-10 number (range ~~)' ],
-    flt: [ 'f',   'float',   'An unbounded base-2 number (range ~~)' ],
-    int: [ 'i',   'integer', 'An unbounded integer (range ..)' ],
-    mul: [ 'm',   'multi',   'A set of possible types in the form t1|t2|t3, (also see array cycling types)'   ],
-    nul: [ 'N',   'null',    'A null value which represents "not-set" for most situations' ],
-    num: [ 'n',   'number',  'Any rational number including decimals, floats, and integers' ],
-    obj: [ 'o',   'object',  'A record-like object with fixed field names, or flexible fields (using *-expressions)'  ],
-    str: [ 's',   'string',  'A string of unicode characters (code points in range 0..1114111)'  ],   // (1-3 chained bytes, 7-21 bits)
-    typ: [ 't',   'type',    'The type-type. integer, array, object, boolean, etc, all have this as their type.'  ],
+    //   tinyname  fullname  code   description
+    '*': [ '*',   'any',     11,     'Represents any value or type.  For example, [*] is an array of anything' ],
+    arr: [ 'a',   'array',   4,     'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]' ],
+    blb: [ 'X',   'blob',    10,     'A sequence of bytes' ],
+    boo: [ 'b',   'boolean', 3,     'A true or false value.  Also can be a 0 or non-zero byte' ],
+    byt: [ 'x',   'byte',    6,     'An integer in range 0..255'   ],
+    dec: [ 'd',   'decimal', 8,     'An unbounded base-10 number (range ~~)' ],
+    flt: [ 'f',   'float',   9,     'An unbounded base-2 number (range ~~)' ],
+    int: [ 'i',   'integer', 7,     'An unbounded integer (range ..)' ],
+    mul: [ 'm',   'multi',   12,     'A set of possible types in the form t1|t2|t3, (also see array cycling types)'   ],
+    nul: [ 'N',   'null',    0,     'A null value which represents "not-set" for most situations' ],
+    num: [ 'n',   'number',  2,     'Any rational number including decimals, floats, and integers' ],
+    obj: [ 'o',   'object',  5,     'A record-like object with fixed field names, or flexible fields (using *-expressions)'  ],
+    str: [ 's',   'string',  1,     'A string of unicode characters (code points in range 0..1114111)'  ],   // (1-3 chained bytes, 7-21 bits)
+    typ: [ 't',   'type',    13,     'The type-type. integer, array, object, boolean, etc, all have this as their type.'  ],
 }
 
-var CODES_BY_NAME = qbobj.map(TYPE_DATA_BY_NAME,  null, function (k, v) { return v[0].charCodeAt(0) })
+var CODES_BY_NAME = qbobj.map(TYPE_DATA_BY_NAME,  null, function (k, v) { return v[2] })
 
 var CONSTRUCTORS = {
     '*': AnyType,
@@ -58,7 +58,7 @@ var CONSTRUCTORS = {
 
 function type_props (name, any) {
     var r = TYPE_DATA_BY_NAME[name]
-    var ret = { name: name, tinyname: r[0], fullname: r[1], desc: r[2] }
+    var ret = { name: name, tinyname: r[0], fullname: r[1], desc: r[3] } // r[2] code is included in they object
     switch (name) {
         case 'obj':
             ret = assign(ret, {obj: {'*': any}})

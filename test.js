@@ -375,6 +375,6 @@ test('escape_wildcards', function (t) {
 
 test('BASE_CODES', function (t) {
     t.plan(1)
-    var exp = tbase.types().reduce(function (m, typ) { m[typ.name] = typ.tinyname.charCodeAt(0); return m }, {})
+    var exp = { '*': 11, arr: 4, blb: 10, boo: 3, byt: 6, dec: 8, flt: 9, int: 7, mul: 12, nul: 0, num: 2, obj: 5, str: 1, typ: 13 }
     t.same(tbase.codes_by_name(), exp, t.desc('codes by name', [], exp))
 })
