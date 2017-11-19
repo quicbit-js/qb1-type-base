@@ -77,11 +77,12 @@ test('create errors', function (t) {
     ], tbase.create, { assert: 'throws' })
 })
 
+function err (msg) { throw Error(msg) }
 test('fieldtyp', function (t) {
     t.table_assert([
         [ 'obj',                                                        'field',            'exp' ],
-        [ { base: 'obj', obj: {a:'i'} },                                'a',                'i' ],
-        [ { base: 'obj', obj: {a:'i'} },                                'ab',               null ],
+        // [ { base: 'obj', obj: {a:'i'} },                                'a',                'i' ],
+        // [ { base: 'obj', obj: {a:'i'} },                                'ab',               null ],
         [ { base: 'obj', obj: {a:'i', 'a*': 'n'} },                     'ab',               'n' ],
         [ { base: 'obj', obj: {a:'i', 'a*': 'n'}, },                    'a',                'i' ],
         [ { base: 'obj', obj: {a:'i', 'a*': 'n'},  },                   'ba',               null ],
@@ -93,7 +94,13 @@ test('fieldtyp', function (t) {
         [ { base: 'obj', obj: {a:'i', '^^': 's', 'a*': 'n'},  },       '^',               's' ],
         [ { base: 'obj', obj: {a:'i', '^^*': 's', 'a*': 'n'},  },       '^',               's' ],
     ], function (obj, field) {
-        return tbase.create(obj).fieldtyp(field)
+        var typ = tbase.create(obj)
+
+        var ret = typ.fieldtyp(field)
+        ret === typ.fieldtyp(field) || err('inconsistent fieldtyp')
+        typ.add_field('foo', 'i')
+        ret === typ.fieldtyp(field) || err('inconsistent fieldtyp - after add')
+        return ret
     })
 })
 
@@ -209,6 +216,21 @@ test('create() and obj() with trivial multi-types', function (t) {
         [ {base: 'obj', obj: {a: mul1}},                            null,               { a: 'int' } ],
         [ {base: 'obj', obj: {a: mul2}},                            null,               { a: 'int' } ],
         [ {base: 'obj', obj: {a: mul_arr}},                         null,               { a: ['int'] } ],
+
+    ], function (props, opt) {
+        var t = tbase.create(props)
+        return t.obj(opt)
+    })
+})
+
+
+test('create() and obj() with unresolved types (string)', function (t) {
+    var mul1 = tbase.create({base: 'mul', name: 'my_mul1', mul: ['foo'] })
+    var mul_arr = tbase.create({base: 'arr', arr: [ mul1 ]})
+    t.table_assert([
+        [ 'props',                                                  'opt',              'exp'  ],
+        [ {base: 'obj', obj: {a: mul1}},                            null,               { a: 'foo' } ],
+        [ {base: 'obj', obj: {a: mul_arr}},                         null,               { a: ['foo'] } ],
 
     ], function (props, opt) {
         var t = tbase.create(props)
@@ -369,12 +391,26 @@ test('escape_wildcards', function (t) {
         [ '^^^^**',             '\\^\\^.*.*' ],
         [ '^^^^*.^*',           '\\^\\^.*\\.\\*' ],
         [ '^^^^*^.^*',          '\\^\\^.*\\.\\*' ],
-        // [ '^^^^*.^*',             '\\^\\^.*\\..\\*' ],
+        [ '^^^^*.^*',           '\\^\\^.*\\.\\*' ],
     ], tbase._escape_wildcards)
 })
 
-test('BASE_CODES', function (t) {
-    t.plan(1)
-    var exp = { '*': 11, arr: 4, blb: 10, boo: 3, byt: 6, dec: 8, flt: 9, int: 7, mul: 12, nul: 0, num: 2, obj: 5, str: 1, typ: 13 }
-    t.same(tbase.codes_by_name(), exp, t.desc('codes by name', [], exp))
+test('escape errors', function (t) {
+    t.table_assert([
+        [ 's',                      'exp' ],
+        [ '^^hi^',                  /dangling escape/ ],
+    ], tbase._escape_wildcards, {assert: 'throws'})
+})
+
+test('codes_by_name()', function (t) {
+    // assert that codes are sequential and unique (0..last)
+    var codes = qbobj.vals(tbase.codes_by_name()).sort(function (a, b) { return a - b })
+
+    var num_types = tbase.types().length
+    t.same(codes.length, num_types, t.desc('number of codes', [], num_types))
+
+    for (var i=0; i<num_types; i++) {
+        t.equal(codes[i], i, t.desc('code value', [], i))
+    }
+    t.end()
 })
