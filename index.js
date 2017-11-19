@@ -264,7 +264,8 @@ MulType.prototype = extend(Type.prototype, {
     _obj: function (opt, depth) {
         if (this.mul.length === 1) {
             var t = this.mul[0]
-            return typeof t === 'string' ? t : t._obj(opt, depth)       // skip this trivial multi-type without increasing depth
+            // skip this trivial multi-type without increasing depth
+            return typeof t === 'string' ? t : t._obj(opt, depth)       // allow string references
         }
         if (this.name && depth >= opt.name_depth) {
             return this.name
