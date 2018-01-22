@@ -15,7 +15,7 @@
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 var test = require('test-kit').tape()
-var qbobj = require('qb1-obj')
+var qbobj = require('qb-obj')
 var tbase = require('.')
 
 test('props', function (t) {

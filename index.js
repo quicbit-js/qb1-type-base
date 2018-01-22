@@ -16,7 +16,7 @@
 
 var assign = require('qb-assign')
 var extend = require('qb-extend-flat')
-var qbobj = require('qb1-obj')
+var qbobj = require('qb-obj')
 
 var TYPE_DATA_BY_NAME = {
 // name
@@ -38,6 +38,8 @@ var TYPE_DATA_BY_NAME = {
 }
 
 var CODES_BY_NAME = qbobj.map(TYPE_DATA_BY_NAME,  null, function (k, v) { return v[2] })
+
+// var CODES_BY_NAME = Object.keys(TYPE_DATA_BY_NAME).reduce(function (m,n) { m[n] = TYPE_DATA_BY_NAME[n][2]; return m }, {})
 
 var CONSTRUCTORS = {
     '*': AnyType,
@@ -372,7 +374,7 @@ function ObjType (props, opt) {
 
     var self = this
     if (props.obj) {
-        qbobj.for_val(props.obj, function (k,v) { self.add_field(k, v, opt) })
+        Object.keys(props.obj).forEach(function (k) { self.add_field(k, props.obj[k], opt) })
     }
     if (this.immutable) {
         this.fields     // create object fields before we freeze

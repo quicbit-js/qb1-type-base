@@ -9,7 +9,7 @@
   "dependencies": {
     "qb-assign": "^1.0.1",
     "qb-extend-flat": "^2.0.2",
-    "qb1-obj": "^1.0.0",
+    "qb-obj": "^1.0.0",
     "tap": "^10.7.3"
   },
   "devDependencies": {
