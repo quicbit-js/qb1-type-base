@@ -37,6 +37,10 @@
     "encode",
     "decode"
   ],
+  "files": [
+    "index.js",
+    "test.js"
+  ],
   "author": "Matthew Voss",
   "license": "ISC"
 }
