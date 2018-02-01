@@ -2,6 +2,11 @@
 
 Object definitions for the fundamental 'base' types and tokens that underpin qb1 serialization.
 
+Note that this package simply creates a shallow wrapper for a given type object that uses 
+exact 3-character names 'int', 'obj', etc.  type-base does not normalize long or tiny names and it
+does not recursively wrap children/fields.  Use qb1-type-obj to walk-and-wrap a wider
+variety of type objects.
+
 ## Overview
 
 qb1-type-base defines the types which support reading and writing structured information.  These types

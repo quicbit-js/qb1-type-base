@@ -100,6 +100,10 @@ Type.prototype = {
         if (this.name) { return this.name }
         return JSON.stringify(this.obj({name_depth: 0}))
     },
+    json: function (opt) {
+        opt = opt || {}
+        return JSON.stringify(this.obj(opt.name_depth), null, opt.indent)
+    },
     _basic_obj: function () {
         var ret = qbobj.map(this,
             // select and map keys
@@ -185,6 +189,11 @@ ArrType.prototype = extend(Type.prototype, {
         }
         this.is_generic = (i === 0 && this.arr[0].name === '*')
     },
+
+    vtype: function (i) {
+        return this.arr[i % this.arr.length]
+    },
+
     _obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
             // the base array instance is given a familiar object look '[]' - which is fine because
@@ -370,6 +379,7 @@ function ObjType (props, opt) {
     this.pfields = null         // pattern match fields
     this.match_all = null       // the special '*' match-everything fields
     this._fields = null         // lazy cache of all fields kept in order of sfields, pfields, then match_all - for efficient public view of all fields
+    this.wild_regex = null      // cache of regular expressions (lazy-create from wild-card field names)
     this.link_children = !!(opt && opt.link_children)
 
     var self = this

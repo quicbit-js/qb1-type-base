@@ -78,11 +78,11 @@ test('create errors', function (t) {
 })
 
 function err (msg) { throw Error(msg) }
-test('fieldtyp', function (t) {
+test('obj fieldtyp', function (t) {
     t.table_assert([
         [ 'obj',                                                        'field',            'exp' ],
-        // [ { base: 'obj', obj: {a:'i'} },                                'a',                'i' ],
-        // [ { base: 'obj', obj: {a:'i'} },                                'ab',               null ],
+        [ { base: 'obj', obj: {a:'i'} },                                'a',                'i' ],
+        [ { base: 'obj', obj: {a:'i'} },                                'ab',               null ],
         [ { base: 'obj', obj: {a:'i', 'a*': 'n'} },                     'ab',               'n' ],
         [ { base: 'obj', obj: {a:'i', 'a*': 'n'}, },                    'a',                'i' ],
         [ { base: 'obj', obj: {a:'i', 'a*': 'n'},  },                   'ba',               null ],
@@ -101,6 +101,18 @@ test('fieldtyp', function (t) {
         typ.add_field('foo', 'i')
         ret === typ.fieldtyp(field) || err('inconsistent fieldtyp - after add')
         return ret
+    })
+})
+
+test('arr vtype', function (t) {
+    t.table_assert([
+        [ 'props',                                                      'i',            'exp' ],
+        [ { base: 'arr', arr: ['i'] },                                  0,              'i' ],
+        [ { base: 'arr', arr: ['i'] },                                  1,              'i' ],
+        [ { base: 'arr', arr: ['*'] },                                  1,              '*' ],
+    ], function (props, i) {
+        var typ = tbase.create(props)
+        return typ.vtype(i)
     })
 })
 
