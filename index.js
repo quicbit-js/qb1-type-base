@@ -269,6 +269,7 @@ function MulType (props, opt) {
         var self = this
         props.mul.forEach(function (t) { self.add_type(t) })
     }
+    this._byname = null
 }
 MulType.prototype = extend(Type.prototype, {
     constructor: MulType,
@@ -288,12 +289,19 @@ MulType.prototype = extend(Type.prototype, {
         })
         return ret
     },
+    get byname() {
+        if (!this._byname) {
+            this._byname = this.mul.reduce(function (m,t) { m[t.name] = t; return m }, {})
+        }
+        return this._byname
+    },
     add_type: function (t) {
         if (this.link_children) {
             t.parent = this
             t.parent_ctx = this.mul.length
         }
         this.mul.push(t)
+        this._byname = null
     }
 })
 
@@ -602,7 +610,6 @@ function lookup (base_name, opt) {
 // Create a single set of base types
 
 var TYPES = create_immutable_types()
-var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
 
 module.exports = {
     create: create,
@@ -610,6 +617,7 @@ module.exports = {
     props: function () { return PROPS },
     types: function () { return TYPES },
     codes_by_name: function () { return CODES_BY_NAME },
+    types_by_all_names: function () { return TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {}) },
 
     // exposed for testing only
     _unesc_caret: unesc_caret,
