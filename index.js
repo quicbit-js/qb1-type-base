@@ -90,7 +90,15 @@ function Type (base, props, opt) {
     this.parent = null
     this.parent_ctx = null      // context within parent - index for arrays and multi-type, field (key) for objects
 
-    this.cust = props.cust || null  // place-holder for custom ad hoc data
+    if (opt.custom_props) {
+        var cust = this.cust = {}
+        Object.keys(opt.custom_props).forEach(function (k) {
+            var kplain = k.substring(1) // remove '$'
+            if (props[kplain] != null) {
+                cust[kplain] = props[kplain]
+            }
+        })
+    }
 }
 Type.prototype = {
     constructor: Type,
@@ -114,6 +122,12 @@ Type.prototype = {
         }
         if (this.fullname !== this.name) {
             ret.$fullname = this.fullname
+        }
+        if (this.cust) {
+            var cust = this.cust
+            Object.keys(cust).forEach(function (k) {
+                ret['$' + k] = cust[k]
+            })
         }
         return ret
     },
@@ -204,7 +218,7 @@ ArrType.prototype = extend(Type.prototype, {
                 return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // allow string references
             })
             if (Object.keys(ret).length === 0) {
-                // a vanilla array with $base: 'arr', $array: [...]
+                // a vanilla array with $base: 'arr', $arr: [...]
                 return arrtypes
             } else {
                 ret.$arr = arrtypes

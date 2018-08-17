@@ -217,6 +217,18 @@ test('create() and obj()', function (t) {
     })
 })
 
+test('custom props', function (t) {
+    t.table_assert([
+        [ 'str_or_props',                  'opt',                               'exp'  ],
+        [ {base: 'int', hash: 3},          {custom_props: {$hash: 'hash'}},               { $base: 'int', $hash: 3 } ],
+        [ {base: 'arr', hash: 4},          {custom_props: {$hash: 'hash'}},               { $hash: 4, $arr: [] } ],
+        [ {base: 'obj', hash: 5},          {custom_props: {$hash: 'hash'}},               { $hash: 5 } ],
+    ], function (props, opt) {
+        var t = tbase.create(props, opt)
+        return t.obj(opt)
+    })
+})
+
 test('create() and obj() with trivial multi-types', function (t) {
     var int = tbase.lookup('int')
     var arr = tbase.lookup('arr')
