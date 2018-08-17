@@ -610,6 +610,8 @@ function lookup (base_name, opt) {
 // Create a single set of base types
 
 var TYPES = create_immutable_types()
+var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
+
 
 module.exports = {
     create: create,
@@ -617,7 +619,7 @@ module.exports = {
     props: function () { return PROPS },
     types: function () { return TYPES },
     codes_by_name: function () { return CODES_BY_NAME },
-    types_by_all_names: function () { return TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {}) },
+    types_by_all_names: function () {  },
 
     // exposed for testing only
     _unesc_caret: unesc_caret,
