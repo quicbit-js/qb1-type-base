@@ -37,10 +37,6 @@ var TYPE_DATA_BY_NAME = {
     typ: [ 't',   'type',    13,     'The type-type. integer, array, object, boolean, etc, all have this as their type.'  ],
 }
 
-var CODES_BY_NAME = qbobj.map(TYPE_DATA_BY_NAME,  null, function (k, v) { return v[2] })
-
-// var CODES_BY_NAME = Object.keys(TYPE_DATA_BY_NAME).reduce(function (m,n) { m[n] = TYPE_DATA_BY_NAME[n][2]; return m }, {})
-
 var CONSTRUCTORS = {
     '*': AnyType,
     arr: ArrType,
@@ -57,6 +53,8 @@ var CONSTRUCTORS = {
     str: StrType,
     typ: TypType,
 }
+
+var CODES_BY_NAME = qbobj.map(TYPE_DATA_BY_NAME,  null, function (k, v) { return v[2] })
 
 function type_props (name, any) {
     var r = TYPE_DATA_BY_NAME[name]
@@ -611,7 +609,9 @@ function lookup (base_name, opt) {
 
 var TYPES = create_immutable_types()
 var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
-
+var CODES_BY_NAME_UPPER = Object.keys(CODES_BY_NAME).reduce(
+    function (m, k) { m[k.toUpperCase()] = CODES_BY_NAME[k]; return m }
+)
 
 module.exports = {
     create: create,
@@ -619,6 +619,7 @@ module.exports = {
     props: function () { return PROPS },
     types: function () { return TYPES },
     codes_by_name: function () { return CODES_BY_NAME },
+    codes_by_NAME: function () { return CODES_BY_NAME_UPPER },
     types_by_all_names: function () {  },
 
     // exposed for testing only
