@@ -34,7 +34,7 @@ var TYPE_DATA_BY_NAME = {
     num: [ 'n',   'number',  2,     'Any rational number including decimals, floats, and integers' ],
     obj: [ 'o',   'object',  5,     'A record-like object with fixed field names, or flexible fields (using *-expressions)'  ],
     str: [ 's',   'string',  1,     'A string of unicode characters (code points in range 0..1114111)'  ],   // (1-3 chained bytes, 7-21 bits)
-    typ: [ 't',   'type',    13,     'The type-type. integer, array, object, boolean, etc, all have this as their type.'  ],
+    typ: [ 't',   'type',    13,    'The type-type. integer, array, object, boolean, etc, all have this as their type.'  ],
 }
 
 var CONSTRUCTORS = {
