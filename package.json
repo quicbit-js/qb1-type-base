@@ -9,12 +9,11 @@
   "dependencies": {
     "qb-assign": "^1.0.1",
     "qb-extend-flat": "^2.0.2",
-    "qb-obj": "^1.0.0",
-    "tap": "^10.7.3"
+    "qb-obj": "^1.0.2"
   },
   "devDependencies": {
-    "tape": "^4.8.0",
-    "test-kit": "^2.5.2"
+    "tape": "^4.9.1",
+    "test-kit": "^2.8.0"
   },
   "scripts": {
     "test": "tape test.js",
