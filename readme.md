@@ -1,11 +1,9 @@
 # qb1-type-base
 
-Object definitions for the fundamental types that underpin qb1 serialization.
+Definitions for the fundamental types that underpin qb1 serialization.
 
-Note that this package simply creates a shallow wrapper for a given type object that uses 
-exact 3-character names 'int', 'obj', etc.  type-base does not normalize long or tiny names and it
-does not recursively wrap children/fields.  Use qb1-type-obj to walk-and-wrap a wider
-variety of type objects.
+Note that this is the raw base module and includes no parsing or normalization of names.  
+Use qb1-type-obj for easier conversion to and from simple objects.
 
 ## Overview
 
