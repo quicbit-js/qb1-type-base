@@ -61,7 +61,7 @@ function type_props (name, any) {
     var ret = { name: name, tinyname: r[0], fullname: r[1], desc: r[3] } // r[2] code is included in they object
     switch (name) {
         case 'obj':
-            ret = assign(ret, {obj: {'*': any}})
+            ret = assign(ret, {to_obj: {'*': any}})
             break
         case 'arr':
             ret = assign(ret, {arr: [any]})
@@ -104,11 +104,11 @@ Type.prototype = {
     constructor: Type,
     toString: function () {
         if (this.name) { return this.name }
-        return JSON.stringify(this.obj({name_depth: 0}))
+        return this.json()
     },
     json: function (opt) {
         opt = opt || {}
-        return JSON.stringify(this.obj(opt.name_depth), null, opt.indent)
+        return JSON.stringify(this.to_obj(opt.name_depth), null, opt.indent)
     },
     _basic_obj: function () {
         var ret = qbobj.map(this,
@@ -131,13 +131,13 @@ Type.prototype = {
         }
         return ret
     },
-    _obj: function (opt, depth) {
+    _to_obj: function (opt, depth) {
         return (this.name && depth >= opt.name_depth ? this.name : this._basic_obj())
     },
     // return the cananoical form of object up to a given opt.name_depth
-    obj: function (opt) {
+    to_obj: function (opt) {
         opt = assign({name_depth: 1}, opt)
-        return this._obj(opt, 0)
+        return this._to_obj(opt, 0)
     },
     // return a path for humans - a path which:
     //    1. has the same structure as as the data it represents (by flattening multi types into their parent context)
@@ -206,7 +206,7 @@ ArrType.prototype = extend(Type.prototype, {
         return this.arr[i % this.arr.length]
     },
 
-    _obj: function (opt, depth) {
+    _to_obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
             // the base array instance is given a familiar object look '[]' - which is fine because
             // empty array types are checked/blocked.  created arrays with same any-pattern are returned as ['*']
@@ -215,7 +215,7 @@ ArrType.prototype = extend(Type.prototype, {
             var ret = Type.prototype._basic_obj.call(this)
             delete ret.$base
             var arrtypes = this.arr.map(function (t) {
-                return (typeof t === 'string') ? t : t._obj(opt, depth + 1)  // allow string references
+                return (typeof t === 'string') ? t : t._to_obj(opt, depth + 1)  // allow string references
             })
             if (Object.keys(ret).length === 0) {
                 // a vanilla array with $base: 'arr', $arr: [...]
@@ -285,11 +285,11 @@ function MulType (props, opt) {
 }
 MulType.prototype = extend(Type.prototype, {
     constructor: MulType,
-    _obj: function (opt, depth) {
+    _to_obj: function (opt, depth) {
         if (this.mul.length === 1) {
             var t = this.mul[0]
             // skip this trivial multi-type without increasing depth
-            return typeof t === 'string' ? t : t._obj(opt, depth)       // allow string references
+            return typeof t === 'string' ? t : t._to_obj(opt, depth)       // allow string references
         }
         if (this.name && depth >= opt.name_depth) {
             return this.name
@@ -297,7 +297,7 @@ MulType.prototype = extend(Type.prototype, {
         var ret = Type.prototype._basic_obj.call(this)
         delete ret.$base
         ret.$mul = this.mul.map(function (t) {
-            return (typeof t === 'string') ? t : t._obj(opt, depth + 1)     // allow string references
+            return (typeof t === 'string') ? t : t._to_obj(opt, depth + 1)     // allow string references
         })
         return ret
     },
@@ -403,8 +403,8 @@ function ObjType (props, opt) {
     this.link_children = !!(opt && opt.link_children)
 
     var self = this
-    if (props.obj) {
-        Object.keys(props.obj).forEach(function (k) { self.add_field(k, props.obj[k], opt) })
+    if (props.to_obj) {
+        Object.keys(props.to_obj).forEach(function (k) { self.add_field(k, props.to_obj[k], opt) })
     }
     if (this.immutable) {
         this.fields     // create object fields before we freeze
@@ -473,7 +473,7 @@ ObjType.prototype = extend(Type.prototype, {
         }
         return this._fields
     },
-    _obj: function (opt, depth) {
+    _to_obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
             // the base object instance is given a familiar object look '{}' - which is fine because
             // fieldless objects are checked/blocked.  created objects with same any-pattern are returned as {'*':'*'}
@@ -481,7 +481,7 @@ ObjType.prototype = extend(Type.prototype, {
         }
         var ret = Type.prototype._basic_obj.call(this)
         delete ret.$base                                    // default is 'obj'
-        return qbobj.map(this.fields, null, function (k, v) { return typeof v === 'string' ? v : v._obj(opt, depth + 1) }, {init: ret})
+        return qbobj.map(this.fields, null, function (k, v) { return typeof v === 'string' ? v : v._to_obj(opt, depth + 1) }, {init: ret})
     },
 })
 
@@ -580,7 +580,7 @@ function create (props, opt) {
     if (base == null) {
         if (props.arr) { base = 'arr' }
         else if (props.mul) { base = 'mul' }
-        else if (props.obj) { base = 'obj' }
+        else if (props.to_obj) { base = 'obj' }
         else { err('no base specified') }
     }
     var t = TYPES_BY_ALL_NAMES[base] || err('unknown base type: ' + base)
