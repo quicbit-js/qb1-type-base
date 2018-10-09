@@ -72,17 +72,49 @@ test('lookup', function (t) {
 //     ])
 // })
 
+test('collections', function (t) {
+    var t_by_all_names = tbase.types_by_all_names()
+    var c_by_all_names = tbase.codes_by_all_names()
+    var t_bycode = tbase.types_by_code()
+
+    var all_names = Object.keys(t_by_all_names)
+    t.same(Object.keys(c_by_all_names), all_names)
+
+    var codes = Object.keys(t_bycode)
+    t.same(codes.length, (all_names.length + 1)/3, '3 names per type')
+
+    var t_by_name = all_names.reduce(function (m, n) {
+        var t = t_by_all_names[n]
+        m[t.name] = t
+        return m
+    }, {})
+    var names = Object.keys(t_by_name)
+    t.same(names.length, 14)
+    t.same(codes.length, 14)
+
+    t.end()
+})
+
+test('byname', function (t) {
+    var mtype = tbase.create({mul:[tbase.create({base:'i'}),tbase.create({base:'b'})]})
+    var names = Object.keys(mtype.byname)
+    t.same(names, [ 'int', 'boo' ])
+    t.equal(mtype.byname, mtype.byname)         // cached
+    t.end()
+})
 
 test('create errors', function (t) {
     t.table_assert([
-        [ 'create',                             'exp'  ],
-        [ {base: 'foo' },                       /unknown base/ ],
-        [ {base: 'nul'},                        /cannot be created using properties/ ],
-        [ {base: '*'},                          /cannot be created using properties/ ],
-        [ {base: 'typ'},                        /cannot be created using properties/ ],
-        [ {base: 'int', tinyname: 'foo' },      /tinyname without name/ ],
-        [ {base: 'int', fullname: 'foo' },      /fullname without name/ ],
-        [ {base: 'mul', name: 'mul' },          /cannot redefine a base type/ ],
+        [ 'create',                          'opt',   'exp'  ],
+        [ {base: 'obj', name: 'foo' },       { custom_props: {tinyname: 'f'}},   /custom properties should have \$ prefix/ ],
+        [ {base: 'obj', name: 'foo' },       { custom_props: {$tinyname: 'f'}},  /custom property cannot shadow/ ],
+        [ {base: 'foo' },                    null,                               /unknown base/ ],
+        [ {base: 'nul'},                     null,                               /cannot be created using properties/ ],
+        [ {base: '*'},                       null,                               /cannot be created using properties/ ],
+        [ {base: 'typ'},                     null,                               /cannot be created using properties/ ],
+        [ {base: 'int', tinyname: 'foo' },   null,                               /tinyname without name/ ],
+        [ {base: 'int', fullname: 'foo' },   null,                               /fullname without name/ ],
+        [ {base: 'mul', name: 'mul' },       null,                               /cannot redefine a base type/ ],
     ], tbase.create, { assert: 'throws' })
 })
 
@@ -227,10 +259,12 @@ test('create() and obj()', function (t) {
 
 test('custom props', function (t) {
     t.table_assert([
-        [ 'props',                  'opt',                               'exp'  ],
-        [ {base: 'int', hash: 3},   {custom_props: {$hash: 'hash'}},     { $base: 'int', $hash: 3 } ],
-        [ {base: 'arr', hash: 4},   {custom_props: {$hash: 'hash'}},     { $hash: 4, $arr: [] } ],
-        [ {base: 'obj', hash: 5},   {custom_props: {$hash: 'hash'}},     { $hash: 5 } ],
+        [ 'props',                  'opt',                                              'exp'  ],
+        [ {base: 'int', hash: 3},   {custom_props: {$hash: 'hash'}},                    { $base: 'int', $hash: 3 } ],
+        [ {base: 'arr', hash: 4},   {custom_props: {$hash: 'hash'}},                    { $hash: 4, $arr: [] } ],
+        [ {base: 'obj', hash: 5},   {custom_props: {$hash: 'hash'}},                    { $hash: 5 } ],
+        '# unset custom property',
+        [ {base: 'obj', hash: 5},   {custom_props: {$hash: 'hash', $foo: 'foo'}},       { $hash: 5 } ],
     ], function (props, opt) {
         var t = tbase.create(props, opt)
         return t.to_obj(opt)

@@ -92,8 +92,11 @@ function Type (base, props, opt) {
 
     if (opt.custom_props) {
         var cust = this.cust = {}
+        // transfer prop values to custom settings
         Object.keys(opt.custom_props).forEach(function (k) {
+            k[0] === '$' || err('custom properties should have $ prefix')
             var kplain = k.substring(1) // remove '$'
+            !PROPS_BY_ALL_NAMES[kplain] || err('custom property cannot shadow reserved property: ' + k)
             if (props[kplain] != null) {
                 cust[kplain] = props[kplain]
             }
@@ -303,7 +306,10 @@ MulType.prototype = extend(Type.prototype, {
     },
     get byname() {
         if (!this._byname) {
-            this._byname = this.mul.reduce(function (m,t) { m[t.name] = t; return m }, {})
+            this._byname = this.mul.reduce(function (m,t) {
+                m[t.name || t.base] = t; return m },
+                {}
+            )
         }
         return this._byname
     },
@@ -440,8 +446,6 @@ ObjType.prototype = extend(Type.prototype, {
             if (!this.pfields) {
                 this.pfields = {}
                 this.wild_regex = {}
-            } else if (this.wild_regex[n_or_pat]) {
-                delete this.wild_regex[n_or_pat]
             }
             this.pfields[n_or_pat] = type
         } else {
@@ -623,11 +627,13 @@ function lookup (base_name, opt) {
 var TYPES = create_immutable_types()
 var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
 var TYPES_BY_CODE = TYPES.reduce(function (a,t) { a[t.code] = t; return a}, [])
+var PROPS_BY_ALL_NAMES = PROPS.reduce(function (m,p) { m[p.name] = m[p.tinyname] = m[p.fullname] = p; return m}, {})
 
 module.exports = {
     create: create,
     lookup: lookup,
     props: function () { return PROPS },
+    props_by_all_names: PROPS_BY_ALL_NAMES,
     types: function () { return TYPES },
     codes_by_name: function () { return CODES_BY_NAME },
     types_by_all_names: function () { return TYPES_BY_ALL_NAMES },
