@@ -227,7 +227,7 @@ test('create() and obj()', function (t) {
 
 test('custom props', function (t) {
     t.table_assert([
-        [ 'str_or_props',                  'opt',                               'exp'  ],
+        [ 'props',                  'opt',                               'exp'  ],
         [ {base: 'int', hash: 3},          {custom_props: {$hash: 'hash'}},               { $base: 'int', $hash: 3 } ],
         [ {base: 'arr', hash: 4},          {custom_props: {$hash: 'hash'}},               { $hash: 4, $arr: [] } ],
         [ {base: 'obj', hash: 5},          {custom_props: {$hash: 'hash'}},               { $hash: 5 } ],
@@ -242,12 +242,12 @@ test('create() and obj() with trivial multi-types', function (t) {
     var arr = tbase.lookup('arr')
     var mul1 = tbase.create({base: 'mul', name: 'my_mul1', mul: [int] })
     var mul2 = tbase.create({base: 'mul', mul: [mul1]})
-    var mul_arr = tbase.create({base: 'arr', arr: [ mul2 ]})
+    var mul_arr = tbase.create({base: 'arr', arr: [ mul2, arr ]})
     t.table_assert([
-        [ 'props',                                                  'opt',              'exp'  ],
+        [ 'props',                                     'opt',              'exp'  ],
         [ {obj: {a: mul1}},                            null,               { a: 'int' } ],
         [ {obj: {a: mul2}},                            null,               { a: 'int' } ],
-        [ {obj: {a: mul_arr}},                         null,               { a: ['int'] } ],
+        [ {obj: {a: mul_arr}},                         null,               { a: ['int', []] } ],
 
     ], function (props, opt) {
         var t = tbase.create(props)
