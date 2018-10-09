@@ -108,6 +108,7 @@ test('create errors', function (t) {
         [ 'create',                          'opt',   'exp'  ],
         [ {base: 'obj', name: 'foo' },       { custom_props: {tinyname: 'f'}},   /custom properties should have \$ prefix/ ],
         [ {base: 'obj', name: 'foo' },       { custom_props: {$tinyname: 'f'}},  /custom property cannot shadow/ ],
+        [ {name: 'foo' },                    null,                               /no base specified/ ],
         [ {base: 'foo' },                    null,                               /unknown base/ ],
         [ {base: 'nul'},                     null,                               /cannot be created using properties/ ],
         [ {base: '*'},                       null,                               /cannot be created using properties/ ],
@@ -116,6 +117,13 @@ test('create errors', function (t) {
         [ {base: 'int', fullname: 'foo' },   null,                               /fullname without name/ ],
         [ {base: 'mul', name: 'mul' },       null,                               /cannot redefine a base type/ ],
     ], tbase.create, { assert: 'throws' })
+})
+
+test('lookup errors', function (t) {
+    t.table_assert([
+        [ 'name',   'opt',    'exp' ],
+        [ 'mul',    null,     /there is no general multi-type/],
+    ], tbase.lookup, {assert: 'throws'})
 })
 
 test('obj fieldtyp', function (t) {

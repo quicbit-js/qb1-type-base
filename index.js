@@ -615,7 +615,7 @@ function lookup (base_name, opt) {
         return _create(base_type.name, type_props(base_type.name, any), opt.create_opt)
     } else {
         // return immutable shared instance
-        base_type.name !== 'mul' || err('there is no generalized multi-type instance, it has to be created')
+        base_type.name !== 'mul' || err('there is no general multi-type.  use create instead')
         return base_type
     }
 }
