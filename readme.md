@@ -1,6 +1,6 @@
 # qb1-type-base
 
-Object definitions for the fundamental 'base' types and tokens that underpin qb1 serialization.
+Object definitions for the fundamental types that underpin qb1 serialization.
 
 Note that this package simply creates a shallow wrapper for a given type object that uses 
 exact 3-character names 'int', 'obj', etc.  type-base does not normalize long or tiny names and it
@@ -37,7 +37,7 @@ with JSON.
 
 ### Representing Types as Simple Strings
 
-    full-name             short           mini        description 
+    fullname              name            tinyname    description 
                           
     number                num             n           a JSON number (plus float or rational, if desired)
     string                str             s           a string of characters
@@ -49,15 +49,14 @@ with JSON.
 
 Like string format, but in JSON:
 
-    full-name             short           mini        description 
+    fullname              name            tinyname    description 
                           
     "number"              "num"           "n"         a JSON number (or base 2 float or rational)
     "string"              "str"           "s"         a string of characters
     ["number"]            ["num"]         ["n"]       an array of numbers (integer, decimal, float...)
     {"string":"number"}   {"str":"num"}   {"s":"n"}   an object with number values
     
-One can use any of these short, long and mini forms interchangeably 
-with qb1. 
+You can use short, long and mini forms interchangeably with qb1. 
 
 ## Basic Types
 
@@ -69,8 +68,6 @@ constraining values to desired size limits.
 ### JSON Tokens
     
     null                    same token as in JSON, usable anywhere a value can be used
-    true                    same token as in JSON
-    false                   same token as in JSON
 
 ### JSON Types
 
@@ -98,7 +95,7 @@ Binary Types (representable in JSON as integers or arrays of integer - as well a
 compact string encodings)
                             
     blob                    array of bytes
-    byte                    eight-bit unsigned integer (values 0..255)
+    byte                    eight bit unsigned integer (values 0..255)
     
 Boolean (representable as both true/false or byte or integer 1/0)
 
@@ -108,7 +105,6 @@ Special Types
 
     type                    type is a type definition
     any or *                is a wild-card representing any valid type within a chosen type-set
-
 
 ## Full, Short, Mini, and Numeric Representations
 
@@ -123,8 +119,6 @@ other types, with the exception of blob, are lower case.
     name        nam     char    ascii
     
     null        nul     N       
-    true        tru     T
-    false       fal     F
     number      num     n
     string      str     s
     object      obj     o
@@ -135,7 +129,7 @@ other types, with the exception of blob, are lower case.
     rational    rat     r
     boolean     boo     b 
     type        typ     t
-    float       flt     f               // exception to nam convention
+    float       flt     f               // exception to name convention
     any         any     *               // exception to char convention
     blob        blb     X               // exception to char convention               
     byte        byt     x               // exception to char convention
@@ -181,39 +175,30 @@ qb1 has integrated suppport for byte size constraints for string and blob types
     
 For example
     
-    str32  - a string of 32 bytes or less
-    blb1024 -   blob of 1024 bytes or less
+    str32  -    a string of 32 bytes or less
+    blb512 -    a blob of 512 bytes or less
 
-Note that we very intentionally chose byte constraints, not character constraints because character limits
-are a business concern while byte limits are a storage and serialization concern.  It can be helpful
-to think of concrete physical limits taking precedence over business limits, not the other way around.
+Note that we very intentionally chose byte constraints, not character constraints for both
+strings and blobs because character limits
+are a business concern while byte limits are a storage and serialization concern, which is
+qb1's focus.  With qb1, concrete physical limits take precedence.
 
 ## Compound Types, Binary Interoperability and More...
 
-See qb1-typex for deeper and broader coverage of qb1 types.
+Coming soon...
 
 # Design Notes
 
-## Static Versus Dynamic Types
+## Static
 
-All base types except the DynType are implemented to be built statically - as if they were immutable.  Though 
-properties are not actually immutable, the base type API guides users to create types with all properties up front
-with the minor exception of linking via link_children().
-
-So the base types get the benefits of the simplification that immutibility gives - not worrying about
-changes to existing types.  These static types are ideal for driving strict parsing using a type structure where
-data must fit the data type.
-
-However, ridged data structure is not suited for type discovery.  For efficient type discovery and capture, we
-need a type graph that allows fluid update to any node in our graph.  But we don't want to implement
-all logic twice.  DynType solves this problem by accepting type information additions after it is created and mimicing 
-any of the given types as it changes.  At the moment a method like obj() is called, DynType will have the 
-base type and properties and even use the same methods as the type that it represents.
+All base types are implemented to be used, as if they were immutable.  Though 
+properties are not actually immutable, the base type API guides users to create 
+types with all properties up front.
 
 ## Custom Properties (type.cust)
 
-Dynamic types support a custom object property called 'cust' where clients can store information within
-the graph.  This information will be included in the type toString() as well as in obj() calls by default
+Types support a custom object property called 'cust' where clients can store information within a type
+graph.  This information will be included in the type toString() as well as in obj() calls by default
 under the cust property.  By default this property is defined as an any-type '*' and properties set
 on it will be serialized via type.toString() and type.obj().  The properties serialized can be controlled 
 by setting cust.$type to a more specific definition, for example:
