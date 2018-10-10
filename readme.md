@@ -3,7 +3,7 @@
 Definitions for the fundamental types that underpin qb1 serialization.
 
 Note that this is the raw base module and includes no parsing or normalization of names.  
-Use qb1-type-obj for easier conversion to and from simple objects.
+Use qb1-obj2type for easier conversion to and from simple objects.
 
 ## Overview
 
@@ -196,14 +196,14 @@ types with all properties up front.
 ## Custom Properties (type.cust)
 
 Types support a custom object property called 'cust' where clients can store information within a type
-graph.  This information will be included in the type toString() as well as in obj() calls by default
+graph.  This information will be included in the type toString() as well as in to_obj() calls by default
 under the cust property.  By default this property is defined as an any-type '*' and properties set
 on it will be serialized via type.toString() and type.obj().  The properties serialized can be controlled 
 by setting cust.$type to a more specific definition, for example:
 
-    var obj2typ = require('qb1-type-obj').obj2typ
+    var obj2type = require('qb1-obj2type')
     
-    var cust_type = obj2typ({ file: 'str', count: 'int' } })
+    var cust_type = obj2type({ file: 'str', count: 'int' } })
     mytype.cust = {
         $type: cust_type,
         file: 'cache.json', 
