@@ -61,7 +61,7 @@ function type_props (name, any) {
     var ret = { name: name, tinyname: r[0], fullname: r[1], desc: r[3] } // r[2] code is included in they object
     switch (name) {
         case 'obj':
-            ret = assign(ret, {to_obj: {'*': any}})
+            ret = assign(ret, {obj: {'*': any}})
             break
         case 'arr':
             ret = assign(ret, {arr: [any]})
@@ -113,7 +113,7 @@ Type.prototype = {
         opt = opt || {}
         return JSON.stringify(this.to_obj(opt.name_depth), null, opt.indent)
     },
-    _basic_obj: function () {
+    _basic_to_obj: function () {
         var ret = qbobj.map(this,
             // select and map keys
             function (k) {
@@ -135,7 +135,7 @@ Type.prototype = {
         return ret
     },
     _to_obj: function (opt, depth) {
-        return (this.name && depth >= opt.name_depth ? this.name : this._basic_obj())
+        return (this.name && depth >= opt.name_depth ? this.name : this._basic_to_obj())
     },
     // return the cananoical form of object up to a given opt.name_depth
     to_obj: function (opt) {
@@ -215,7 +215,7 @@ ArrType.prototype = extend(Type.prototype, {
             // empty array types are checked/blocked.  created arrays with same any-pattern are returned as ['*']
             return this.name === 'arr' ? [] : this.name     // 'arr' is the base-type
         } else {
-            var ret = Type.prototype._basic_obj.call(this)
+            var ret = Type.prototype._basic_to_obj.call(this)
             delete ret.$base
             var arrtypes = this.arr.map(function (t) {
                 return (typeof t === 'string') ? t : t._to_obj(opt, depth + 1)  // allow string references
@@ -297,7 +297,7 @@ MulType.prototype = extend(Type.prototype, {
         if (this.name && depth >= opt.name_depth) {
             return this.name
         }
-        var ret = Type.prototype._basic_obj.call(this)
+        var ret = Type.prototype._basic_to_obj.call(this)
         delete ret.$base
         ret.$mul = this.mul.map(function (t) {
             return (typeof t === 'string') ? t : t._to_obj(opt, depth + 1)     // allow string references
@@ -409,8 +409,8 @@ function ObjType (props, opt) {
     this.link_children = !!(opt && opt.link_children)
 
     var self = this
-    if (props.to_obj) {
-        Object.keys(props.to_obj).forEach(function (k) { self.add_field(k, props.to_obj[k], opt) })
+    if (props.obj) {
+        Object.keys(props.obj).forEach(function (k) { self.add_field(k, props.obj[k], opt) })
     }
     if (this.immutable) {
         this.fields     // create object fields before we freeze
@@ -483,7 +483,7 @@ ObjType.prototype = extend(Type.prototype, {
             // fieldless objects are checked/blocked.  created objects with same any-pattern are returned as {'*':'*'}
             return this.name === 'obj' ? {} : this.name
         }
-        var ret = Type.prototype._basic_obj.call(this)
+        var ret = Type.prototype._basic_to_obj.call(this)
         delete ret.$base                                    // default is 'obj'
         return qbobj.map(this.fields, null, function (k, v) { return typeof v === 'string' ? v : v._to_obj(opt, depth + 1) }, {init: ret})
     },
@@ -584,7 +584,7 @@ function create (props, opt) {
     if (base == null) {
         if (props.arr) { base = 'arr' }
         else if (props.mul) { base = 'mul' }
-        else if (props.to_obj) { base = 'obj' }
+        else if (props.obj) { base = 'obj' }
         else { err('no base specified') }
     }
     var t = TYPES_BY_ALL_NAMES[base] || err('unknown base type: ' + base)

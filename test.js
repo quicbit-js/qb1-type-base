@@ -129,18 +129,18 @@ test('lookup errors', function (t) {
 test('obj fieldtyp', function (t) {
     t.table_assert([
         [ 'obj',                                                 'field', 'exp' ],
-        [ { to_obj: {a: 'i'} },                                     'a',     'i' ],
-        [ { to_obj: {a: 'i'} },                                     'ab',    null ],
-        [ { to_obj: {a: 'i', 'a*': 'n'} },                          'ab',    'n' ],
-        [ { to_obj: {a: 'i', 'a*': 'n'} },                          'a',     'i' ],
-        [ { to_obj: {a: 'i', 'a*': 'n'} },                          'ba',    null ],
-        [ { to_obj: {a: 'i', '*a': 'n', 'a*': 'o'} },               'ab',    'o' ],
-        [ { to_obj: {a: 'i', '*': 's', 'a*': 'n'} },                'ba',    's' ],
-        [ { to_obj: {a: 'i', '^*': 's', 'a*': 'n'} },               'ba',    null ],
-        [ { to_obj: {a: 'i', '^*': 's', 'a*': 'n'} },               '^',     null ],
-        [ { to_obj: {a: 'i', '^*': 's', 'a*': 'n'} },               '*',     's' ],
-        [ { to_obj: {a: 'i', '^^': 's', 'a*': 'n'} },               '^',     's' ],
-        [ { base: 'obj', to_obj: {a: 'i', '^^*': 's', 'a*': 'n'} }, '^',     's' ],
+        [ { obj: {a: 'i'} },                                     'a',     'i' ],
+        [ { obj: {a: 'i'} },                                     'ab',    null ],
+        [ { obj: {a: 'i', 'a*': 'n'} },                          'ab',    'n' ],
+        [ { obj: {a: 'i', 'a*': 'n'} },                          'a',     'i' ],
+        [ { obj: {a: 'i', 'a*': 'n'} },                          'ba',    null ],
+        [ { obj: {a: 'i', '*a': 'n', 'a*': 'o'} },               'ab',    'o' ],
+        [ { obj: {a: 'i', '*': 's', 'a*': 'n'} },                'ba',    's' ],
+        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               'ba',    null ],
+        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               '^',     null ],
+        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               '*',     's' ],
+        [ { obj: {a: 'i', '^^': 's', 'a*': 'n'} },               '^',     's' ],
+        [ { base: 'obj', obj: {a: 'i', '^^*': 's', 'a*': 'n'} }, '^',     's' ],
     ], function (obj, field) {
         var typ = tbase.create(obj)
 
@@ -170,11 +170,11 @@ test('generic object', function (t) {
     t.table_assert([
         [ 'str_or_props',                        'exp' ],
         [ 'obj',                                 [ true, true ] ],
-        [ { to_obj: { '*': any } },                 [ true, true ] ],
-        [ { to_obj: { '*': int } },                 [ true, false ] ],
-        [ { to_obj: { 'a*': int } },                [ false, false ] ],
-        [ { to_obj: { a: int } },                   [ false, false ] ],
-        [ { to_obj: { a: int, 'a*': int } },        [ false, false ] ],
+        [ { obj: { '*': any } },                 [ true, true ] ],
+        [ { obj: { '*': int } },                 [ true, false ] ],
+        [ { obj: { 'a*': int } },                [ false, false ] ],
+        [ { obj: { a: int } },                   [ false, false ] ],
+        [ { obj: { a: int, 'a*': int } },        [ false, false ] ],
     ], function (str_or_props) {
         var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
         return [t.is_generic, t.is_generic_any]
@@ -209,7 +209,7 @@ test('toString', function (t) {
         [ arr_int,                                          '["int"]' ],
         [ arr_myint,                                        '["myint"]'],
         [ arr_anyint,                                       '[{"$mul":["int","myint"]}]'],
-        [ {base:'obj', to_obj: {'s*':arr_anyint}},             '{"s*":[{"$mul":["int","myint"]}]}' ],
+        [ {base:'obj', obj: {'s*':arr_anyint}},             '{"s*":[{"$mul":["int","myint"]}]}' ],
         [ {base:'str'},                                     '{"$base":"str"}' ],
         [ {base:'str', name: 'i'},                          'i' ],
 
@@ -238,8 +238,8 @@ test('create() and obj()', function (t) {
         [ 'int',                                       null,               { $base: 'int', $name: 'int', $desc: 'An unbounded integer (range ..)', $tinyname: 'i', $fullname: 'integer' }   ],
         [ 'arr',                                       null,               { $name: 'arr', $desc: 'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]', $tinyname: 'a', $fullname: 'array', $arr: [ '*' ] } ],
         [ 'obj',                                       null,               { $name: 'obj', $desc: 'A record-like object with fixed field names, or flexible fields (using *-expressions)', $tinyname: 'o', $fullname: 'object', '*': '*' } ],
-        [ {base: 'obj', to_obj: { a: arr } },             null,               { a: [] } ],
-        [ {base: 'obj', to_obj: { '*':any } },            null,               {'*':'*'} ],        // custom object has this different look from base type '{}' - though functionally the same.
+        [ {base: 'obj', obj: { a: arr } },             null,               { a: [] } ],
+        [ {base: 'obj', obj: { '*':any } },            null,               {'*':'*'} ],        // custom object has this different look from base type '{}' - though functionally the same.
         [ {base: 'arr', arr: ['*']},                   null,               ['*'] ],            // custom array has this different look from base type '[]' - though functionally the same.
         [ {base: 'int'},                               null,               { $base: 'int' }],
         [ {base: 'int', name: 'foo'},                  null,               { $base: 'int', $name: 'foo' } ],
@@ -247,18 +247,18 @@ test('create() and obj()', function (t) {
         [ {arr: [int_arr]},                            null,               [ ['int'] ] ],
         [ {arr: [my_int_arr]},                         null,               [ 'my_int_arr' ] ],
         [ {arr: all_types},                            null,               [ [], 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', {}, 'str', 'typ' ] ],
-        [ {to_obj: {a:int}},                              null,               { a: 'int' } ],
-        [ {to_obj: {'a*':int}},                           null,               { 'a*': 'int' } ],
-        [ {to_obj: { a: int_arr } },                      null,               { a: [ 'int' ] } ],
-        [ {to_obj: { a: int_arr } },                      {name_depth:0},     { a: [ 'int' ] } ],
-        [ {to_obj: { a: int_arr } },                      {name_depth:0},     { a: [ 'int' ] } ],
-        [ {to_obj: { a: int_arr } },                      {name_depth:1},     { a: [ 'int' ] } ],
-        [ {to_obj: { a: int_arr } },                      {name_depth:2},     { a: [ 'int' ] } ],
-        [ {to_obj: { a: int_arr } },                      {name_depth:2},     { a: [ 'int' ] } ],
-        [ {name: 'foo', to_obj: { a: my_int_arr } },      {name_depth:0},     'foo' ],
-        [ {name: 'foo', to_obj: { a: my_int_arr } },      {name_depth:1},     { $name: 'foo', a: 'my_int_arr' } ],
-        [ {name: 'foo', to_obj: { a: my_int_arr } },      {name_depth:2},     { $name: 'foo', a: { $name: 'my_int_arr', $arr: [ 'my_int' ] } } ],
-        [ {name: 'foo', to_obj: { a: int_arr } },         {name_depth:1},     { $name: 'foo', a: [ 'int' ] } ],
+        [ {obj: {a:int}},                              null,               { a: 'int' } ],
+        [ {obj: {'a*':int}},                           null,               { 'a*': 'int' } ],
+        [ {obj: { a: int_arr } },                      null,               { a: [ 'int' ] } ],
+        [ {obj: { a: int_arr } },                      {name_depth:0},     { a: [ 'int' ] } ],
+        [ {obj: { a: int_arr } },                      {name_depth:0},     { a: [ 'int' ] } ],
+        [ {obj: { a: int_arr } },                      {name_depth:1},     { a: [ 'int' ] } ],
+        [ {obj: { a: int_arr } },                      {name_depth:2},     { a: [ 'int' ] } ],
+        [ {obj: { a: int_arr } },                      {name_depth:2},     { a: [ 'int' ] } ],
+        [ {name: 'foo', obj: { a: my_int_arr } },      {name_depth:0},     'foo' ],
+        [ {name: 'foo', obj: { a: my_int_arr } },      {name_depth:1},     { $name: 'foo', a: 'my_int_arr' } ],
+        [ {name: 'foo', obj: { a: my_int_arr } },      {name_depth:2},     { $name: 'foo', a: { $name: 'my_int_arr', $arr: [ 'my_int' ] } } ],
+        [ {name: 'foo', obj: { a: int_arr } },         {name_depth:1},     { $name: 'foo', a: [ 'int' ] } ],
     ], function (str_or_props, opt) {
         var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
         return t.to_obj(opt)
@@ -287,9 +287,9 @@ test('create() and obj() with trivial multi-types', function (t) {
     var mul_arr = tbase.create({base: 'arr', arr: [ mul2, arr ]})
     t.table_assert([
         [ 'props',                                     'opt',              'exp'  ],
-        [ {to_obj: {a: mul1}},                            null,               { a: 'int' } ],
-        [ {to_obj: {a: mul2}},                            null,               { a: 'int' } ],
-        [ {to_obj: {a: mul_arr}},                         null,               { a: ['int', []] } ],
+        [ {obj: {a: mul1}},                            null,               { a: 'int' } ],
+        [ {obj: {a: mul2}},                            null,               { a: 'int' } ],
+        [ {obj: {a: mul_arr}},                         null,               { a: ['int', []] } ],
 
     ], function (props, opt) {
         var t = tbase.create(props)
@@ -303,8 +303,8 @@ test('create() and obj() with unresolved types (string)', function (t) {
     var mul_arr = tbase.create({base: 'arr', arr: [ mul1 ]})
     t.table_assert([
         [ 'props',                   'opt',              'exp'  ],
-        [ {to_obj: {a: mul1}},          null,               { a: 'foo' } ],
-        [ {to_obj: {a: mul_arr}},       null,               { a: ['foo'] } ],
+        [ {obj: {a: mul1}},          null,               { a: 'foo' } ],
+        [ {obj: {a: mul_arr}},       null,               { a: ['foo'] } ],
 
     ], function (props, opt) {
         var t = tbase.create(props)
@@ -317,8 +317,8 @@ test('obj() with references', function (t) {
     var my_int_arr = tbase.create({base: 'arr', name: 'my_int_arr', arr: [ my_int ]})
     t.table_assert([
         [ 'str_or_props',                             'opt',              'exp'  ],
-        [ {to_obj: {a: 'unresolved'}},                    null,               { a: 'unresolved' } ],
-        [ {to_obj: {'b*': 'unresolved'}},                 null,               { 'b*': 'unresolved' } ],
+        [ {obj: {a: 'unresolved'}},                    null,               { a: 'unresolved' } ],
+        [ {obj: {'b*': 'unresolved'}},                 null,               { 'b*': 'unresolved' } ],
         [ {arr: ['another_unknown']},                  null,               ['another_unknown'] ],
         [ {mul: ['foo_boo','str']},                    null,               { $mul: [ 'foo_boo', 'str' ] } ],
     ], function (str_or_props, opt) {
@@ -341,7 +341,7 @@ test('linking and path', function (t) {
     var my_int_arr = create({name: 'my_int_arr', arr: [ my_int ]})
     var int = lookup('int')
     var mul = create({mul: [str1, my_int_arr]})
-    var obj = create({to_obj: {a:mul, b:str2, '*':num1, 'num*':int}})
+    var obj = create({obj: {a:mul, b:str2, '*':num1, 'num*':int}})
 
     t.equal(mul.parent, obj)
     t.equal(mul.parent_ctx, 'a')
@@ -395,7 +395,7 @@ test('path with dynamic multi-types', function (t) {
     t.equal(str1.path(), '{str}')       // special case - only multi-type as parent path clarifies which type
     t.equal(int1.path(), '{int}')
 
-    var obj1 = create({base: 'obj', to_obj: {a_multi: mul1}})
+    var obj1 = create({base: 'obj', obj: {a_multi: mul1}})
     t.equal(str1.path(), 'a_multi{str}')
     t.equal(int1.path(), 'a_multi{int}')
 
