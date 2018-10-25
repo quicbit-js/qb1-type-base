@@ -105,6 +105,7 @@ function Type (base, props, opt) {
 }
 Type.prototype = {
     constructor: Type,
+    complex: false,           // overridden (true) for arr, mul, obj, any, and typ.  "complex" means composed of arbitrary types. e.g. blb and str are NOT complex.
     toString: function () {
         if (this.name) { return this.name }
         return this.json()
@@ -178,6 +179,7 @@ function AnyType (props, opt) {
 }
 AnyType.prototype = extend(Type.prototype, {
     constructor: AnyType,
+    complex: true,
 })
 
 // Array
@@ -195,6 +197,7 @@ function ArrType (props, opt) {
 
 ArrType.prototype = extend(Type.prototype, {
     constructor: ArrType,
+    complex: true,
     add_type: function (t) {
         var i = this.arr.length
         this.arr[i] = t
@@ -288,6 +291,7 @@ function MulType (props, opt) {
 }
 MulType.prototype = extend(Type.prototype, {
     constructor: MulType,
+    complex: true,
     _to_obj: function (opt, depth) {
         if (this.mul.length === 1) {
             var t = this.mul[0]
@@ -418,6 +422,7 @@ function ObjType (props, opt) {
 }
 ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
+    complex: true,
     fieldtyp: function (n) {
         if (this.sfields && this.sfields[n] ) {
             return this.sfields[n]
@@ -503,6 +508,7 @@ function TypType (props, opt) {
 }
 TypType.prototype = extend(Type.prototype, {
     constructor: TypType,
+    complex: true,
 })
 
 // Null
