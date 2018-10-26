@@ -488,3 +488,121 @@ test('codes_by_name()', function (t) {
     }
     t.end()
 })
+
+//
+// qb-type-flag tests
+//
+var qb_tflag = require('./qb-type-flags')
+
+var FLAG_NAME = qb_tflag.FLAG_NAME
+
+test('vtype', function (t) {
+    t.table_assert([
+        [ 'v',   'exp' ],
+        [ null,  { nul: 1 } ],
+        [ 'x',   { str: 2 } ],
+        [ true,  { boo: 8 } ],
+        [ [],    { arr: 16 } ],
+        [ {},    { obj: 32 } ],
+        [ 0,     { byt: 64 } ],
+        [ 9,     { byt: 64 } ],
+        [ 256,   { int: 128 } ],
+        [ -1,    { int: 128 } ],
+        [ 1.2,   { flt: 512 } ],
+        [ 'UAR', { blb: 1024 } ],
+        [ {$type:'*'}, { any: 2048 } ],
+        [ {$type:'typ'}, { typ: 8192 } ],
+    ], function (v) {
+        if (v === 'UAR') {
+            v = new Uint8Array(0)
+        }
+        var f = qb_tflag.vtype(v)
+        var ret = {}
+        ret[FLAG_NAME[f]] = f
+        return ret
+    })
+})
+
+test('single_type', function (t) {
+    t.table_assert([
+        [ 'tnames',      'exp' ],
+        [ 'nul',         'nul' ],
+        [ 'int',         'int' ],
+        [ 'nul|int',     'int' ],
+        [ 'nul|int|flt', 'flt' ],
+        [ 'dec|int|flt', 'num' ],
+        [ 'dec|flt',     'num' ],
+        [ 'int|byt',     'int' ],
+        [ 'dec|int',     'dec' ],
+        [ 'int|flt',     'flt' ],
+        [ 'int|flt|nul', 'flt' ],
+        [ 'flt|nul',     'flt' ],
+        [ 'str|nul',     'str' ],
+        [ 'str',         'str' ],
+        [ 'str|nul|obj', 'mul' ],
+    ], function (tnames) {
+        var f = qb_tflag.str2flag(tnames)
+        var s = qb_tflag.to_single(f)
+        return qb_tflag.flag2str(s)
+    })
+})
+
+test('is_type_of', function (t) {
+    t.table_assert([
+        [ 'sub', 't',   'exp' ],
+        [ 'nul', 'nul', 1 ],
+        [ 'int', 'int', 1 ],
+        [ 'int', 'num', 1 ],
+        [ 'num', 'int', 0 ],
+        [ 'byt', 'int', 1 ],
+        [ 'int', 'byt', 0 ],
+        [ 'dec', 'flt', 0 ],
+        [ 'flt', 'dec', 0 ],
+        [ 'byt', 'flt', 1 ],
+        [ 'dec', 'byt', 0 ],
+        [ 'num', 'flt', 0 ],
+        [ 'flt', 'num', 1 ],
+        [ 'num', 'mul', 1 ],
+        [ 'num', 'any', 1 ],
+    ], function (sub, t) {
+        return qb_tflag.is_type_of(sub, t) ? 1 : 0
+    })
+})
+
+
+test('arr_types', function (t) {
+    t.table_assert([
+        [ 'v',                         'off', 'lim', 'exp' ],
+        [ [],                          null,  null,  '' ],
+        [ [ null ],                    null,  null,  'nul' ],
+        [ [ 1,2,3,null ],              0,     3,     'byt' ],
+        [ [ 1,2,3,null ],              0,     4,     'nul|byt' ],
+        [ [ 1,2,3,-4 ],                2,     4,     'byt|int' ],
+        [ [ 'x', null ],               0,     2,     'nul|str' ],
+        [ [ 'x', true ],               0,     2,     'str|boo' ],
+        [ [ 'x', true, null, 3.2, 3 ], 1,     4,     'nul|boo|flt' ],
+    ], function (v, off, lim) {
+        var f = qb_tflag.arr_types(v, off, lim)
+        return qb_tflag.flag2str(f)
+    })
+})
+
+test('errors', function (t) {
+    t.table_assert([
+        [ 'fn',         'args',             'exp' ],
+        [ 'str2flag',   ['xxx'],            /unknown type/ ],
+        [ 'vtype',      [function () {}],   /unknown type/ ],
+    ], function (fn, args) {
+        qb_tflag[fn].apply(null, args)
+    }, { assert: 'throws' })
+})
+
+
+var TYPES = tbase.types_by_all_names()
+test('CODE2NAME', function (t) {
+    qb_tflag.CODE2NAME.forEach(function (name, code) {
+        var type = TYPES[name]
+        t.same(code, type.code, t.desc('code2name', [type.name], type.code))
+    })
+    t.end()
+})

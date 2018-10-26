@@ -17,6 +17,7 @@
 var assign = require('qb-assign')
 var extend = require('qb-extend-flat')
 var qbobj = require('qb-obj')
+var qb_tflags = require('./qb-type-flags')
 
 var TYPE_DATA_BY_NAME = {
 // name
@@ -635,6 +636,14 @@ var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname]
 var TYPES_BY_CODE = TYPES.reduce(function (a,t) { a[t.code] = t; return a}, [])
 var PROPS_BY_ALL_NAMES = PROPS.reduce(function (m,p) { m[p.name] = m[p.tinyname] = m[p.fullname] = p; return m}, {})
 
+function arr_type (a, off, lim) {
+    var atype = arr_types(a, off, lim)
+    if (atype !== 0) {
+        return FLAG_NAME[to_single(atype)] || err('could not determine array type')
+    }
+}
+
+
 module.exports = {
     create: create,
     lookup: lookup,
@@ -645,6 +654,11 @@ module.exports = {
     types_by_all_names: function () { return TYPES_BY_ALL_NAMES },
     codes_by_all_names: function () { return TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t.code; return m}, {}) },
     types_by_code: function () { return TYPES_BY_CODE },
+
+    // expose a couple functions powered by flags, but not the flags themselves (yet).  still thinking about
+    // what type codes to make public other than the basic codes.
+    is_type_of: qb_tflags.is_type_of,
+    arr_type: arr_type,
 
     // exposed for testing only
     _unesc_caret: unesc_caret,
