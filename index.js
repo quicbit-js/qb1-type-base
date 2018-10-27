@@ -637,9 +637,9 @@ var TYPES_BY_CODE = TYPES.reduce(function (a,t) { a[t.code] = t; return a}, [])
 var PROPS_BY_ALL_NAMES = PROPS.reduce(function (m,p) { m[p.name] = m[p.tinyname] = m[p.fullname] = p; return m}, {})
 
 function arr_type (a, off, lim) {
-    var atype = arr_types(a, off, lim)
+    var atype = qb_tflags.arr_types(a, off, lim)
     if (atype !== 0) {
-        return FLAG_NAME[to_single(atype)] || err('could not determine array type')
+        return qb_tflags.FLAG_NAME[qb_tflags.to_single(atype)] || err('could not determine array type')
     }
 }
 
