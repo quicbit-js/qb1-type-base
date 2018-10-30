@@ -551,6 +551,7 @@ test('is_type_of', function (t) {
     t.table_assert([
         [ 'sub', 't',   'exp' ],
         [ 'nul', 'nul', 1 ],
+        [ 'nul', 'int', 1 ],
         [ 'int', 'int', 1 ],
         [ 'int', 'num', 1 ],
         [ 'num', 'int', 0 ],

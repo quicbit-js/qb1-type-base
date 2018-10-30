@@ -639,8 +639,15 @@ var PROPS_BY_ALL_NAMES = PROPS.reduce(function (m,p) { m[p.name] = m[p.tinyname]
 function arr_type (a, off, lim) {
     var atype = qb_tflags.arr_types(a, off, lim)
     if (atype !== 0) {
-        return qb_tflags.FLAG_NAME[qb_tflags.to_single(atype)] || err('could not determine array type')
+        atype = qb_tflags.FLAG_NAME[qb_tflags.to_single(atype)] || err('could not determine array type')
     }
+    return atype
+}
+
+function is_type_of (subname, tname) {
+    var subt = TYPES_BY_ALL_NAMES[subname]
+    var t = TYPES_BY_ALL_NAMES[tname]
+    return qb_tflags.is_type_of(subt && subt.name, t && t.name)
 }
 
 
@@ -657,7 +664,7 @@ module.exports = {
 
     // expose a couple functions powered by flags, but not the flags themselves (yet).  still thinking about
     // what type codes to make public other than the basic codes.
-    is_type_of: qb_tflags.is_type_of,
+    is_type_of: is_type_of,
     arr_type: arr_type,
 
     // exposed for testing only

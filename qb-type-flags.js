@@ -133,10 +133,11 @@ function is_type_of (subname, tname) {
     var sub = FLAG[subname] || err('unknown type: ' + subname)
     var t = FLAG[tname] || err('unknown type: ' + tname)
     switch (t) {
-        case NUM: return (sub & (INT|DEC|FLT|BYT)) !== 0
-        case FLT: return (sub & (INT|BYT)) !== 0
-        case DEC: return (sub & (INT|BYT)) !== 0
-        case INT: return (sub & (BYT)) !== 0
+        // all stats handle nul, so nul type is compatible with all
+        case NUM: return (sub & (INT|DEC|FLT|BYT|NUL)) !== 0
+        case FLT: return (sub & (INT|BYT|NUL)) !== 0
+        case DEC: return (sub & (INT|BYT|NUL)) !== 0
+        case INT: return (sub & (BYT|NUL)) !== 0
 
         case ANY:
         case MUL:
