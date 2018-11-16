@@ -397,6 +397,28 @@ function has_char (s, c, e) {
     return false
 }
 
+function fieldtype (n) {
+    if (this.sfields && this.sfields[n] ) {
+        return this.sfields[n]
+    }
+
+    if (this.pfields) {
+        var pf_keys = Object.keys(this.pfields)
+        for (var i=0; i<pf_keys.length; i++) {
+            var k = pf_keys[i]
+            var re = this.wild_regex[k]
+            if (!re) {
+                re = this.wild_regex[k] = new RegExp('^' + escape_wildcards(k) + '$')
+            }
+            if (re.test(n)) {
+                return this.pfields[k]
+            }
+        }
+    }
+
+    return this.match_all || null
+}
+
 // Object - like record, but has one or more pattern-fields (pfields)
 // opt
 //      immutable: create lazy fields up front to prepare for Object.freeze()
@@ -424,27 +446,8 @@ function ObjType (props, opt) {
 ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
     complex: true,
-    fieldtyp: function (n) {
-        if (this.sfields && this.sfields[n] ) {
-            return this.sfields[n]
-        }
-
-        if (this.pfields) {
-            var pf_keys = Object.keys(this.pfields)
-            for (var i=0; i<pf_keys.length; i++) {
-                var k = pf_keys[i]
-                var re = this.wild_regex[k]
-                if (!re) {
-                    re = this.wild_regex[k] = new RegExp('^' + escape_wildcards(k) + '$')
-                }
-                if (re.test(n)) {
-                    return this.pfields[k]
-                }
-            }
-        }
-
-        return this.match_all || null
-    },
+    fieldtyp: fieldtype,        // deprecate this name
+    fieldtype: fieldtype,
     add_field: function (n_or_pat, type) {
         if (n_or_pat === '*') {
             this.match_all = type

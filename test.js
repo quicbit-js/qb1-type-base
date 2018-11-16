@@ -126,7 +126,7 @@ test('lookup errors', function (t) {
     ], tbase.lookup, {assert: 'throws'})
 })
 
-test('obj fieldtyp', function (t) {
+test('obj fieldtype', function (t) {
     t.table_assert([
         [ 'obj',                                                 'field', 'exp' ],
         [ { obj: {a: 'i'} },                                     'a',     'i' ],
@@ -144,10 +144,10 @@ test('obj fieldtyp', function (t) {
     ], function (obj, field) {
         var typ = tbase.create(obj)
 
-        var ret = typ.fieldtyp(field)
-        ret === typ.fieldtyp(field) || err('inconsistent fieldtyp')
+        var ret = typ.fieldtype(field)
+        ret === typ.fieldtype(field) || err('inconsistent fieldtype')
         typ.add_field('foo', 'i')
-        ret === typ.fieldtyp(field) || err('inconsistent fieldtyp - after add')
+        ret === typ.fieldtype(field) || err('inconsistent fieldtype - after add')
         return ret
     })
 })
