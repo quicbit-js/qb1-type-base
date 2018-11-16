@@ -344,11 +344,11 @@ NumType.prototype = extend(Type.prototype, {
     constructor: NumType,
 })
 
-// handling two-levels of escaping is tricky with regex.  this unescape of caret sequences is simpler than
-// my attempts at pure/simple regex.  it tracks
-// wild-card escapes in a separate wild_lit array for later processing (to interpret as literal '*' instead of match-all).
+// Handling two-levels of escaping is tricky with regex.  This unescape of caret sequences is simpler than
+// my attempts at pure/simple regex.  It returns a new string 'ns' with double-escapes reduced to single and
+// the indexes into 'ns' that are to be interpreted as literal asterix (not wild).
 function unesc_caret(s) {
-    var wild_lit = []
+    var literal_asterix = []
     var ns = ''
     var i = 0
     var last = 0
@@ -358,7 +358,7 @@ function unesc_caret(s) {
             ns += s.substring(last, i)
             last = i+1                                      // includes escaped character ^^ -> ^, ^* -> *, ^x -> x...
             if (s[i+1] === '*') {
-                wild_lit[ns.length] = 1
+                literal_asterix[ns.length] = 1
             }
             i += 2
         } else {
@@ -366,22 +366,20 @@ function unesc_caret(s) {
         }
     }
     ns += s.substring(last)
-    return { s: ns, wild_lit: wild_lit }
+    return { s: ns, literal_asterix: literal_asterix }
 }
 
 function escape_wildcards(s) {
     var info = unesc_caret(s)
 
     var bslash_escape = function (c, off) {
-        if (c === '*' && !info.wild_lit[off]) {
+        if (c === '*' && !info.literal_asterix[off]) {
             return '.*'
         } else {
             return '\\' + c     // just escape it
         }
     }
-    var ns = info.s.replace(/[-[\]{}()+?.,\\$|*^#\s]/g, bslash_escape)
-
-    return ns
+    return info.s.replace(/[-[\]{}()+?.,\\$|*^#\s]/g, bslash_escape)
 }
 
 // return true if string s has character c and is not preceded by an odd number of consecutive escapes e)

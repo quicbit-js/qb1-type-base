@@ -432,20 +432,20 @@ test('has_char', function (t) {
 test('unesc_caret', function (t) {
     t.table_assert([
         [ 's',                  'exp' ],
-        [ 'abc',                { s: 'abc', wild_lit: [] } ],
-        [ 'a^bc',               { s: 'abc', wild_lit: [] } ],
-        [ 'a^b^c',              { s: 'abc', wild_lit: [] } ],
-        [ 'a^b^^c',             { s: 'ab^c', wild_lit: [] } ],
-        [ '^^',                 { s: '^', wild_lit: [] } ],
-        [ '*',                  { s: '*', wild_lit: [] } ],
-        [ '^^x*',               { s: '^x*', wild_lit: [] } ],
-        [ '^*',                 { s: '*', wild_lit: [0] } ],
-        [ '^^^*',               { s: '^*', wild_lit: [1] } ],
-        [ '^^^*x^*',            { s: '^*x*', wild_lit: [1,3] } ],
-        [ '^^abc^*x^*',         { s: '^abc*x*', wild_lit: [4,6] } ],
+        [ 'abc',                { s: 'abc', literal_asterix: [] } ],
+        [ 'a^bc',               { s: 'abc', literal_asterix: [] } ],
+        [ 'a^b^c',              { s: 'abc', literal_asterix: [] } ],
+        [ 'a^b^^c',             { s: 'ab^c', literal_asterix: [] } ],
+        [ '^^',                 { s: '^', literal_asterix: [] } ],
+        [ '*',                  { s: '*', literal_asterix: [] } ],
+        [ '^^x*',               { s: '^x*', literal_asterix: [] } ],
+        [ '^*',                 { s: '*', literal_asterix: [0] } ],
+        [ '^^^*',               { s: '^*', literal_asterix: [1] } ],
+        [ '^^^*x^*',            { s: '^*x*', literal_asterix: [1,3] } ],
+        [ '^^abc^*x^*',         { s: '^abc*x*', literal_asterix: [4,6] } ],
     ], function (s) {
         var info = tbase._unesc_caret(s)
-        info.wild_lit = Object.keys(info.wild_lit).map(function (k) { return Number(k) })   // convert sparse array to just keys
+        info.literal_asterix = Object.keys(info.literal_asterix).map(function (k) { return Number(k) })   // convert sparse array to just keys
         return info
     })
 })
