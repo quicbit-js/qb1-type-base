@@ -638,10 +638,10 @@ var PROPS_BY_ALL_NAMES = PROPS.reduce(function (m,p) { m[p.name] = m[p.tinyname]
 
 function arr_type (a, off, lim) {
     var atype = qb_tflags.arr_types(a, off, lim)
-    if (atype !== 0) {
-        atype = qb_tflags.FLAG_NAME[qb_tflags.to_single(atype)] || err('could not determine array type')
+    if (atype === 0) {
+        return null
     }
-    return atype
+    return qb_tflags.FLAG_NAME[qb_tflags.to_single(atype)] || err('could not determine array type')
 }
 
 function is_type_of (subname, tname) {

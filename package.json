@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "tape": "^4.9.1",
-    "test-kit": "^2.8.6"
+    "test-kit": "^2.8.7"
   },
   "scripts": {
     "test": "tape test.js",

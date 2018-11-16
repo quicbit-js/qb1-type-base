@@ -489,6 +489,36 @@ test('codes_by_name()', function (t) {
     t.end()
 })
 
+test('arr_type', function (t) {
+    t.table_assert([
+        [ 'a',                         'off', 'lim', 'exp' ],
+        [ [],                          null,  null,   null ],
+        [ [ null ],                    null,  null,  'nul' ],
+        [ [ null, null ],              null,  null,  'nul' ],
+        [ [ 1, 2, 3, null ],           0,     3,     'byt' ],
+        [ [ 1, 2, 3, null ],           0,     4,     'byt' ],
+        [ [ 1, 2, 3, -4 ],             2,     4,     'int' ],
+        [ [ 'x', null ],               0,     2,     'str' ],
+        [ [ null, 3.2 ],               0,     2,     'flt' ],
+        [ [ 'x', true ],               0,     2,     'mul' ],
+        [ [ 'x', true, null, 3.2, 3 ], 1,     4,     'mul' ],
+    ], function (a, off, lim) {
+        return tbase.arr_type(a, off, lim)
+    })
+})
+
+test('is_type_of', function (t) {
+    t.table_assert([
+        [ 'sub', 't',   'exp' ],
+        [ 'nul', 'nul', 1 ],
+        [ 'dec', 'byt', 0 ],
+        [ 'num', 'mul', 1 ],
+        [ 'num', 'any', 1 ],
+    ], function (sub, t) {
+        return tbase.is_type_of(sub, t) ? 1 : 0
+    })
+})
+
 //
 // qb-type-flag tests
 //
