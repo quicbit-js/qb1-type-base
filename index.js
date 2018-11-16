@@ -456,7 +456,7 @@ ObjType.prototype = extend(Type.prototype, {
             }
             this.pfields[n_or_pat] = type
         } else {
-            if (!this.sfields) { this.sfields = {} }
+            if (!this.sfields) { this.sfields = {__proto__: null} }
             var nk = unesc_caret(n_or_pat).s        // no wild cards to worry about
             this.sfields[nk] = type
         }
