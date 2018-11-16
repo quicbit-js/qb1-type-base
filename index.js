@@ -395,7 +395,7 @@ function has_char (s, c, e) {
     return false
 }
 
-function fieldtype (n) {
+function field_type (n) {
     if (this.sfields && this.sfields[n] ) {
         return this.sfields[n]
     }
@@ -444,8 +444,30 @@ function ObjType (props, opt) {
 ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
     complex: true,
-    fieldtyp: fieldtype,        // deprecate this name
-    fieldtype: fieldtype,
+    fieldtyp: field_type,        // deprecate this name
+    field_type: field_type,
+    // return the first-match field name
+    field_name: function (n) {
+        if (this.sfields && this.sfields[n] ) {
+            return n
+        }
+
+        if (this.pfields) {
+            var pf_keys = Object.keys(this.pfields)
+            for (var i=0; i<pf_keys.length; i++) {
+                var k = pf_keys[i]
+                var re = this.wild_regex[k]
+                if (!re) {
+                    re = this.wild_regex[k] = new RegExp('^' + escape_wildcards(k) + '$')
+                }
+                if (re.test(n)) {
+                    return k
+                }
+            }
+        }
+
+        return this.match_all ? '*' : null
+    },
     add_field: function (n_or_pat, type) {
         if (n_or_pat === '*') {
             this.match_all = type

@@ -126,29 +126,51 @@ test('lookup errors', function (t) {
     ], tbase.lookup, {assert: 'throws'})
 })
 
-test('obj fieldtype', function (t) {
+test('obj field_type', function (t) {
     t.table_assert([
         [ 'obj',                                                 'field', 'exp' ],
-        [ { obj: {a: 'i'} },                                     'a',     'i' ],
-        [ { obj: {a: 'i'} },                                     'ab',    null ],
-        [ { obj: {a: 'i', 'a*': 'n'} },                          'ab',    'n' ],
-        [ { obj: {a: 'i', 'a*': 'n'} },                          'a',     'i' ],
-        [ { obj: {a: 'i', 'a*': 'n'} },                          'ba',    null ],
-        [ { obj: {a: 'i', '*a': 'n', 'a*': 'o'} },               'ab',    'o' ],
-        [ { obj: {a: 'i', '*': 's', 'a*': 'n'} },                'ba',    's' ],
-        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               'ba',    null ],
-        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               '^',     null ],
-        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               '*',     's' ],
-        [ { obj: {a: 'i', '^^': 's', 'a*': 'n'} },               '^',     's' ],
-        [ { base: 'obj', obj: {a: 'i', '^^*': 's', 'a*': 'n'} }, '^',     's' ],
+        [ { obj: {a: 'i'} },                                     'a',     [ 'i', 'i' ] ],
+        [ { obj: {a: 'i'} },                                     'ab',    [ null, null ] ],
+        [ { obj: {a: 'i', 'a*': 'n'} },                          'ab',    [ 'n', 'n' ] ],
+        [ { obj: {a: 'i', 'a*': 'n'} },                          'a',     [ 'i', 'i' ] ],
+        [ { obj: {a: 'i', 'a*': 'n'} },                          'ba',    [ null, null ] ],
+        [ { obj: {a: 'i', '*a': 'n', 'a*': 'o'} },               'ab',    [ 'o', 'o' ] ],
+        [ { obj: {a: 'i', '*': 's', 'a*': 'n'} },                'ba',    [ 's', 's' ] ],
+        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               'ba',    [ null, null ] ],
+        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               '^',     [ null, null ] ],
+        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               '*',     [ 's', 's' ] ],
+        [ { obj: {a: 'i', '^^': 's', 'a*': 'n'} },               '^',     [ 's', 's' ] ],
+        [ { base: 'obj', obj: {a: 'i', '^^*': 's', 'a*': 'n'} }, '^',     [ 's', 's' ] ],
     ], function (obj, field) {
         var typ = tbase.create(obj)
 
-        var ret = typ.fieldtype(field)
-        ret === typ.fieldtype(field) || err('inconsistent fieldtype')
+        var t1 = typ.field_type(field)
         typ.add_field('foo', 'i')
-        ret === typ.fieldtype(field) || err('inconsistent fieldtype - after add')
-        return ret
+        var t2 = typ.field_type(field)
+        return [t1, t2]
+    })
+})
+
+test('obj field_name', function (t) {
+    t.table_assert([
+        [ 'obj',                                                 'field', 'exp' ],
+        [ { obj: {a: 'i'} },                                     'a',     'a' ],
+        [ { obj: {a: 'i'} },                                     'b',     null ],
+        [ { obj: {a: 'i'} },                                     '*',     null ],
+        [ { obj: {a: 'i', 'a*': 'n'} },                          'ab',    'a*' ],
+        [ { obj: {a: 'i', 'a*': 'n'} },                          'a',     'a' ],
+        [ { obj: {a: 'i', 'a*': 'n'} },                          'ba',    null ],
+        [ { obj: {a: 'i', '*a': 'n', 'a*': 'o'} },               'ab',    'a*' ],
+        [ { obj: {a: 'i', '*a': 'n', 'a*': 'o'} },               'ba',    '*a' ],
+        [ { obj: {a: 'i', '*': 's', 'a*': 'n'} },                'ba',    '*' ],
+        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               'ba',    null ],
+        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               '^',     null ],
+        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               '*',     '*' ],
+        [ { obj: {a: 'i', '^^': 's', 'a*': 'n'} },               '^',     '^' ],
+        [ { base: 'obj', obj: {a: 'i', '^^*': 's', 'a*': 'n'} }, '^',     '^^*' ],
+    ], function (obj, field) {
+        var typ = tbase.create(obj)
+        return typ.field_name(field)
     })
 })
 
