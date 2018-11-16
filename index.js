@@ -430,7 +430,7 @@ function ObjType (props, opt) {
 ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
     complex: true,
-    fieldtyp: field_type,        // deprecate this name
+    fieldtyp: field_type,        // deprecate fieldtyp
     field_type: field_type,
     // return the first-match field name
     field_name: function (n) {
