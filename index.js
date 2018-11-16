@@ -430,7 +430,7 @@ function ObjType (props, opt) {
 
     this.sfields = null         // vanilla string fields
     this.pfields = null         // pattern match fields
-    this.match_all = null       // the special '*' match-everything fields
+    this.match_all = null       // the special '*' match-everything field
     this._fields = null         // lazy cache of all fields kept in order of sfields, pfields, then match_all - for efficient public view of all fields
     this.wild_regex = null      // cache of regular expressions (lazy-create from wild-card field names)
     this.link_children = !!(opt && opt.link_children)
