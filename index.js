@@ -399,22 +399,8 @@ function field_type (n) {
     if (this.sfields && this.sfields[n] ) {
         return this.sfields[n]
     }
-
-    if (this.pfields) {
-        var pf_keys = Object.keys(this.pfields)
-        for (var i=0; i<pf_keys.length; i++) {
-            var k = pf_keys[i]
-            var re = this.wild_regex[k]
-            if (!re) {
-                re = this.wild_regex[k] = new RegExp('^' + escape_wildcards(k) + '$')
-            }
-            if (re.test(n)) {
-                return this.pfields[k]
-            }
-        }
-    }
-
-    return this.match_all || null
+    var fn = this.field_name(n)
+    return fn === '*' ? this.match_all : (this.pfields && this.pfields[fn] || null)
 }
 
 // Object - like record, but has one or more pattern-fields (pfields)
