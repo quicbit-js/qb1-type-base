@@ -136,12 +136,6 @@ Type.prototype = {
         }
         return ret
     },
-    equal: function (b) {
-        var a = this
-        if (a === b) { return true }
-        if (a.base !== b.base) { return false }
-        return a.json() === b.json()
-    },
     _to_obj: function (opt, depth) {
         return (this.name && depth >= opt.name_depth ? this.name : this._basic_to_obj())
     },
