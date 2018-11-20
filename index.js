@@ -106,7 +106,10 @@ function Type (base, props, opt) {
 }
 Type.prototype = {
     constructor: Type,
-    complex: false,           // overridden (true) for arr, mul, obj, any, and typ.  "complex" means composed of arbitrary types. e.g. blb and str are NOT complex.
+    // "complex" means composed of different types. e.g. blb and str are NOT complex. is true for arr, mul, obj, any, and typ.
+    complex: false,
+    // a type that can hold many values.  obj and arr are containers, as is any.  mul is a container iff it allows containers.
+    container: false,
     toString: function () {
         if (this.name) { return this.name }
         return this.json()
@@ -181,6 +184,7 @@ function AnyType (props, opt) {
 AnyType.prototype = extend(Type.prototype, {
     constructor: AnyType,
     complex: true,
+    container: true,
 })
 
 // Array
@@ -198,7 +202,8 @@ function ArrType (props, opt) {
 
 ArrType.prototype = extend(Type.prototype, {
     constructor: ArrType,
-    complex: true,
+    complex: true,                                      // represents a variety of types
+    container: true,                                    // holds multiple instances
     add_type: function (t) {
         var i = this.arr.length
         this.arr[i] = t
@@ -293,6 +298,7 @@ function MulType (props, opt) {
 MulType.prototype = extend(Type.prototype, {
     constructor: MulType,
     complex: true,
+    // container iff mul contains a container
     _to_obj: function (opt, depth) {
         if (this.mul.length === 1) {
             var t = this.mul[0]
@@ -324,6 +330,7 @@ MulType.prototype = extend(Type.prototype, {
             t.parent_ctx = this.mul.length
         }
         this.mul.push(t)
+        if (t.container) { this.container = true }
         this._byname = null
     }
 })
@@ -430,6 +437,7 @@ function ObjType (props, opt) {
 ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
     complex: true,
+    container: true,
     fieldtyp: field_type,        // deprecate fieldtyp
     field_type: field_type,
     // return the first-match field name
@@ -519,6 +527,7 @@ function TypType (props, opt) {
 TypType.prototype = extend(Type.prototype, {
     constructor: TypType,
     complex: true,
+    // not a container.  though complex, type represents a single value.
 })
 
 // Null
