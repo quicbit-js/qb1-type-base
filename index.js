@@ -110,6 +110,7 @@ Type.prototype = {
     complex: false,
     // a type that can hold many values.  obj and arr are containers, as is any.  mul is a container iff it allows containers.
     container: false,
+    type: 'type',
     toString: function () {
         if (this.name) { return this.name }
         return this.json()
@@ -185,6 +186,7 @@ AnyType.prototype = extend(Type.prototype, {
     constructor: AnyType,
     complex: true,
     container: true,
+    checkv: function (v, quiet) { return typeof v !== 'function' || (quiet ? false : err('expected a value, but got a function'))},
 })
 
 // Array
@@ -204,6 +206,7 @@ ArrType.prototype = extend(Type.prototype, {
     constructor: ArrType,
     complex: true,                                      // represents a variety of types
     container: true,                                    // holds multiple instances
+    checkv: function (v, quiet) { return Array.isArray(v) || ArrayBuffer.isView(v) || (quiet ? false : err('expected an array')) },
     add_type: function (t) {
         var i = this.arr.length
         this.arr[i] = t
@@ -246,6 +249,21 @@ function BlbType (props, opt) {
 }
 BlbType.prototype = extend(Type.prototype, {
     constructor: BlbType,
+    checkv: function (v, quiet) {
+        switch (typeof v) {
+            case 'string':
+                return v[0] === '0' && v[1] === 'x' || (quiet ? false : err('not a blob: ' + v))
+            case 'object':
+                if (Array.isArray(v) || ArrayBuffer.isView(v)) {
+                    return true
+                }
+                var t = v.$t || v.$typ || v.$type
+                if (t !== 'b' && t !== 'blb' && t !== 'blob') { return quiet ? false : err('not a blob: ' + v)}
+                return true
+            default:
+                return quiet ? false : err('not a blob: ' + v)
+        }
+    }
 })
 
 // Boolean
@@ -254,6 +272,12 @@ function BooType (props, opt) {
 }
 BooType.prototype = extend(Type.prototype, {
     constructor: BooType,
+    checkv: function (v, quiet) {
+        switch (typeof v) {
+            case 'number': case 'boolean': return true
+            default: return quiet ? false : err('not a boolean: ' + v)
+        }
+    }
 })
 
 // Byte
@@ -262,6 +286,7 @@ function BytType (props, opt) {
 }
 BytType.prototype = extend(Type.prototype, {
     constructor: BytType,
+    checkv: function (v, quiet) { return v != null && v >= 0 && v <= 255 || (quiet ? false : err('not a byte: ' + v)) }
 })
 
 // Decimal
@@ -270,6 +295,7 @@ function DecType (props, opt) {
 }
 DecType.prototype = extend(Type.prototype, {
     constructor: DecType,
+    checkv: function (v, quiet) { return typeof v === 'number' || (quiet ? false : err('not a decimal: ' + v))}
 })
 
 // Float
@@ -278,6 +304,7 @@ function FltType (props, opt) {
 }
 FltType.prototype = extend(Type.prototype, {
     constructor: FltType,
+    checkv: function (v, quiet) { return typeof v === 'number' || (quiet ? false : err('not a float: ' + v)) }
 })
 
 // Multi Type
@@ -298,6 +325,12 @@ function MulType (props, opt) {
 MulType.prototype = extend(Type.prototype, {
     constructor: MulType,
     complex: true,
+    checkv: function (v, quiet) {
+        this.mul.forEach(function (t) {
+            if (t.checkv(v, true)) { return true }
+        })
+        return quiet ? false : err('does not match multi-type: ' + v + ': ' + this.toString())
+    },
     // container iff mul contains a container
     _to_obj: function (opt, depth) {
         if (this.mul.length === 1) {
@@ -335,12 +368,17 @@ MulType.prototype = extend(Type.prototype, {
     }
 })
 
+var MAX_INT = Math.pow(2, 53) - 1
+var MIN_INT = -MAX_INT - 1
 // Integer
 function IntType (props, opt) {
     Type.call(this, 'int', props, opt)
 }
 IntType.prototype = extend(Type.prototype, {
     constructor: IntType,
+    checkv: function (v, quiet) {
+        return v != null && v > MIN_INT && v < MAX_INT || (quiet ? false : err('not an integer: ' + v))
+    }
 })
 
 // Number
@@ -349,6 +387,9 @@ function NumType (props, opt) {
 }
 NumType.prototype = extend(Type.prototype, {
     constructor: NumType,
+    checkv: function (v, quiet) {
+        return typeof v === 'number' || (quiet ? false : err('not a number: ' + v))
+    }
 })
 
 // Handling two-levels of escaping is tricky with regex.  This unescape of caret sequences is simpler than
@@ -518,6 +559,7 @@ function StrType (props, opt) {
 }
 StrType.prototype = extend(Type.prototype, {
     constructor: StrType,
+    checkv: function (v, quiet) { return typeof v === 'string' || ( quiet ? false : err('not a string: ' + v))}
 })
 
 // Type (Type)
@@ -605,18 +647,38 @@ function _create (base, props, opt) {
 //      immutable       if set, then immutable types will be returned using Object.freeze().
 //
 function create (props, opt) {
-    var base = props.base
-    if (base == null) {
-        if (props.arr) { base = 'arr' }
-        else if (props.mul) { base = 'mul' }
-        else if (props.obj) { base = 'obj' }
-        else { err('no base specified') }
+    var ret = assign({}, props)
+    var base
+    var pbase = props.base
+    if (ret.arr) {
+        ret.arr = ret.arr.map(function (t) { return create_or_lookup(t, opt) })
+        base = 'arr'
+    } else if (ret.mul) {
+        ret.mul = ret.mul.map(function (t) { return create_or_lookup(t, opt) })
+        base = 'mul'
+    } else if (ret.obj) {
+        ret.obj = qbobj.map(ret.obj, null, function (k, t) { return create_or_lookup(t, opt) })
+        base = 'obj'
+    } else {
+        pbase != null || err('no base specified')
+        var t = TYPES_BY_ALL_NAMES[pbase] || err('unknown base')     // normalize pbase and base
+        base = pbase = t.name
     }
-    var t = TYPES_BY_ALL_NAMES[base] || err('unknown base type: ' + base)
-    // t.name has the normalized base name
-    ;({nul:1, '*':1, typ:1}[t.name]) == null || err('type ' + base + ' cannot be created using properties, use lookup() instead')
-    props.name !== base && props.tinyname !== base && props.fullname !== base || err('cannot redefine a base type: ' + base)
-    return _create(t.name, props, opt)
+    if (pbase) {
+        pbase === base || err('base mismatch: ' + base + ' and ' + pbase)
+    }
+    ({nul:1, '*':1, typ:1}[base]) == null || err('type ' + base + ' cannot be created using properties, use lookup() instead')
+    ret.name !== base && ret.tinyname !== base && ret.fullname !== base || err('cannot redefine a base type: ' + base)
+    return _create(base, ret, opt)
+}
+
+function create_or_lookup (v, opt) {
+    if (v.type === 'type') { return v }
+    if (typeof v === 'string') {
+        return lookup(v, opt) || v      // allow unresolved references
+    } else {
+        return create(v, opt)
+    }
 }
 
 function err (msg) { throw Error(msg) }

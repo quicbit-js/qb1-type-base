@@ -129,25 +129,25 @@ test('lookup errors', function (t) {
 test('obj field_type', function (t) {
     t.table_assert([
         [ 'obj',                                                 'field', 'exp' ],
-        [ { obj: {a: 'i'} },                                     'a',     [ 'i', 'i' ] ],
-        [ { obj: {a: 'i'} },                                     'ab',    [ null, null ] ],
-        [ { obj: {a: 'i', 'a*': 'n'} },                          'ab',    [ 'n', 'n' ] ],
-        [ { obj: {a: 'i', 'a*': 'n'} },                          'a',     [ 'i', 'i' ] ],
-        [ { obj: {a: 'i', 'a*': 'n'} },                          'ba',    [ null, null ] ],
-        [ { obj: {a: 'i', '*a': 'n', 'a*': 'o'} },               'ab',    [ 'o', 'o' ] ],
-        [ { obj: {a: 'i', '*': 's', 'a*': 'n'} },                'ba',    [ 's', 's' ] ],
-        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               'ba',    [ null, null ] ],
-        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               '^',     [ null, null ] ],
-        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               '*',     [ 's', 's' ] ],
-        [ { obj: {a: 'i', '^^': 's', 'a*': 'n'} },               '^',     [ 's', 's' ] ],
-        [ { base: 'obj', obj: {a: 'i', '^^*': 's', 'a*': 'n'} }, '^',     [ 's', 's' ] ],
+        [ { obj: {a: 'i'} },                                     'a',     [ 'int', 'int' ] ],
+        [ { obj: {a: 'i'} },                                     'ab',    [ 'null', 'null' ] ],
+        [ { obj: {a: 'i', 'a*': 'n'} },                          'ab',    [ 'num', 'num' ] ],
+        [ { obj: {a: 'i', 'a*': 'n'} },                          'a',     [ 'int', 'int' ] ],
+        [ { obj: {a: 'i', 'a*': 'n'} },                          'ba',    [ 'null', 'null' ] ],
+        [ { obj: {a: 'i', '*a': 'n', 'a*': 'o'} },               'ab',    [ 'obj', 'obj' ] ],
+        [ { obj: {a: 'i', '*': 's', 'a*': 'n'} },                'ba',    [ 'str', 'str' ] ],
+        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               'ba',    [ 'null', 'null' ] ],
+        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               '^',     [ 'null', 'null' ] ],
+        [ { obj: {a: 'i', '^*': 's', 'a*': 'n'} },               '*',     [ 'str', 'str' ] ],
+        [ { obj: {a: 'i', '^^': 's', 'a*': 'n'} },               '^',     [ 'str', 'str' ] ],
+        [ { base: 'obj', obj: {a: 'i', '^^*': 's', 'a*': 'n'} }, '^',     [ 'str', 'str' ] ],
     ], function (obj, field) {
         var typ = tbase.create(obj)
 
         var t1 = typ.field_type(field)
         typ.add_field('foo', 'i')
         var t2 = typ.field_type(field)
-        return [t1, t2]
+        return [String(t1), String(t2)]
     })
 })
 
@@ -177,12 +177,12 @@ test('obj field_name', function (t) {
 test('arr vtype', function (t) {
     t.table_assert([
         [ 'props',                     'i', 'exp' ],
-        [ { arr: ['i'] },              0,   'i' ],
-        [ { arr: ['i'] },              1,   'i' ],
+        [ { arr: ['i'] },              0,   'int' ],
+        [ { arr: ['i'] },              1,   'int' ],
         [ { base: 'arr', arr: ['*'] }, 1,   '*' ],
     ], function (props, i) {
         var typ = tbase.create(props)
-        return typ.vtype(i)
+        return typ.vtype(i).toString()
     })
 })
 
@@ -284,6 +284,74 @@ test('create() and to_obj()', function (t) {
     ], function (str_or_props, opt) {
         var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
         return t.to_obj(opt)
+    })
+})
+
+test.skip('checkv()', function (t) {
+    var int = tbase.lookup('int')
+    t.table_assert([
+        [ 'props',                               'v',   'quiet', 'exp' ],
+        '# string',
+        [ 'str',                                 'x',   1,       [ true, null ] ],
+        [ 'str',                                 'x',   0,       [ true, null ] ],
+        [ 'str',                                 null,  1,       [ false, null ] ],
+        [ 'str',                                 7,     0,       [ null, 'not a string: 7' ] ],
+        '# integer',
+        [ 'int',                                 0,     1,       [ true, null ] ],
+        [ 'int',                                 -1,    0,       [ true, null ] ],
+        [ 'int',                                 null,  1,       [ false, null ] ],
+        [ 'int',                                 'x',   0,       [ null, 'not an integer: x' ] ],
+        '# float',
+        [ 'flt',                                 1.1,   1,       [ true, null ] ],
+        [ 'flt',                                 0,     0,       [ null, 'not a float: 0' ] ],
+        [ 'flt',                                 null,  1,       [ null, 'not a float: null' ] ],
+        [ 'flt',                                 'x',   0,       [ null, 'not a float: x' ] ],
+        '# decimal',
+        [ 'dec',                                 0,     1,       [ true, null ] ],
+        [ 'dec',                                 9,     0,       [ null, 'not a decimal: 9' ] ],
+        [ 'dec',                                 null,  1,       [ null, 'not a decimal: null' ] ],
+        [ 'dec',                                 'x',   0,       [ null, 'not a decimal: x' ] ],
+        '# number',
+        [ 'num',                                 0,     1,       [ true, null ] ],
+        [ 'num',                                 7.1,   0,       [ null, 'not a number: 7.1' ] ],
+        [ 'num',                                 null,  1,       [ null, 'not a number: null' ] ],
+        [ 'num',                                 'x',   0,       [ null, 'not a number: x' ] ],
+        '# boolean',
+        [ 'boo',                                 false, 1,       [ undefined, null ] ],
+        [ 'boo',                                 7,     0,       [ undefined, null ] ],
+        [ 'boo',                                 'x',   1,       [ 1, null ] ],
+        [ 'boo',                                 null,  0,       [ null, 'not a boolean: null' ] ],
+        '# blob',
+        [ 'blb',                                 [],    1,       [ true, null ] ],
+        [ 'blb',                                 '0x3', 0,       [ null, 'not a blob: 0x3' ] ],
+        [ 'blb',                                 null,  1,       [ null, "Cannot read property '$t' of null" ] ],
+        [ 'blb',                                 7,     0,       [ null, 'not a blob: 7' ] ],
+        '# array',
+        [ 'arr',                                 [],    1,       [ 1, null ] ],
+        [ 'arr',                                 [],    0,       [ true, null ] ],
+        [ 'arr',                                 null,  1,       [ 1, null ] ],
+        [ 'arr',                                 0,     0,       [ null, 'expected an array' ] ],
+        '# object',
+        [ 'obj',                                 {},    1,       [ null, 't.checkv is not a function' ] ],
+        [ 'obj',                                 {},    0,       [ null, 't.checkv is not a function' ] ],
+        [ 'obj',                                 null,  1,       [ null, 't.checkv is not a function' ] ],
+        [ 'obj',                                 0,     0,       [ null, 't.checkv is not a function' ] ],
+        '# multi-type',
+        [ { mul: ['int'] },                     0,     1,       [ null, 't.checkv is not a function' ] ],
+        [ { mul: ['str'] },               0,     0,       [ null, 't.checkv is not a function' ] ],
+        [ { mul: ['int', 'str'] }, 1,     1,       [ null, 't.checkv is not a function' ] ],
+        [ { mul: ['int', 'str'] },               0,     0,       [ null, 't.checkv is not a function' ] ],
+    ], function (props, v, quiet) {
+        var t = typeof props === 'string' ? tbase.lookup(props) : tbase.create(props)
+        if (tbase)
+        var res = null
+        var estr = null
+        try {
+            res = t.checkv(v, quiet)
+        } catch (e) {
+            estr = e.message
+        }
+        return [res, estr]
     })
 })
 
