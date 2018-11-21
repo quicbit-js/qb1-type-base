@@ -144,7 +144,7 @@ Type.prototype = {
     },
     // return the cananoical form of object up to a given opt.name_depth
     to_obj: function (opt) {
-        opt = assign({name_depth: 1}, opt)
+        opt = assign({name_depth: 0}, opt)
         return this._to_obj(opt, 0)
     },
     // return a path for humans - a path which:

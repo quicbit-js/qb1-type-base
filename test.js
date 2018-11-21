@@ -241,7 +241,7 @@ test('toString', function (t) {
     })
 })
 
-test('create() and obj()', function (t) {
+test('create() and to_obj()', function (t) {
     var any = tbase.lookup('any')
     var all_types = tbase.types().slice(1)      // leave out the '*' any type
     var int = tbase.lookup('int')
@@ -252,19 +252,19 @@ test('create() and obj()', function (t) {
     t.table_assert([
         [ 'str_or_props',                              'opt',              'exp'  ],
         [ 's',                                         {name_depth:0},     'str' ],
-        [ 'i',                                         {name_depth:0},     'int' ],
+        [ 'i',                                         null,               'int' ],
         [ 'b',                                         {name_depth:0},     'boo' ],
         [ 'a',                                         {name_depth:0},     [] ],
         [ 'o',                                         {name_depth:0},     {} ],
-        [ 'str',                                       null,               { $base: 'str', $name: 'str', $desc: 'A string of unicode characters (code points in range 0..1114111)', $tinyname: 's', $fullname: 'string' } ],
-        [ 'int',                                       null,               { $base: 'int', $name: 'int', $desc: 'An unbounded integer (range ..)', $tinyname: 'i', $fullname: 'integer' }   ],
-        [ 'arr',                                       null,               { $name: 'arr', $desc: 'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]', $tinyname: 'a', $fullname: 'array', $arr: [ '*' ] } ],
-        [ 'obj',                                       null,               { $name: 'obj', $desc: 'A record-like object with fixed field names, or flexible fields (using *-expressions)', $tinyname: 'o', $fullname: 'object', '*': '*' } ],
+        [ 'str',                                       {name_depth:1},     { $base: 'str', $name: 'str', $desc: 'A string of unicode characters (code points in range 0..1114111)', $tinyname: 's', $fullname: 'string' } ],
+        [ 'int',                                       {name_depth:1},     { $base: 'int', $name: 'int', $desc: 'An unbounded integer (range ..)', $tinyname: 'i', $fullname: 'integer' }   ],
+        [ 'arr',                                       {name_depth:1},     { $name: 'arr', $desc: 'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]', $tinyname: 'a', $fullname: 'array', $arr: [ '*' ] } ],
+        [ 'obj',                                       {name_depth:1},     { $name: 'obj', $desc: 'A record-like object with fixed field names, or flexible fields (using *-expressions)', $tinyname: 'o', $fullname: 'object', '*': '*' } ],
         [ {base: 'obj', obj: { a: arr } },             null,               { a: [] } ],
         [ {base: 'obj', obj: { '*':any } },            null,               {'*':'*'} ],        // custom object has this different look from base type '{}' - though functionally the same.
         [ {base: 'arr', arr: ['*']},                   null,               ['*'] ],            // custom array has this different look from base type '[]' - though functionally the same.
         [ {base: 'int'},                               null,               { $base: 'int' }],
-        [ {base: 'int', name: 'foo'},                  null,               { $base: 'int', $name: 'foo' } ],
+        [ {base: 'int', name: 'foo'},                  null,               'foo' ],
         [ int_arr,                                     null,               [ 'int' ] ],
         [ {arr: [int_arr]},                            null,               [ ['int'] ] ],
         [ {arr: [my_int_arr]},                         null,               [ 'my_int_arr' ] ],
