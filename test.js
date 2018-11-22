@@ -199,7 +199,7 @@ test('generic object', function (t) {
         [ { obj: { a: int } },                   [ false, false ] ],
         [ { obj: { a: int, 'a*': int } },        [ false, false ] ],
     ], function (str_or_props) {
-        var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
+        var t = tbase.from(str_or_props)
         return [t.is_generic, t.is_generic_any]
     })
 })
@@ -213,7 +213,7 @@ test('generic array', function (t) {
         [ { arr: [any] },                             true ],
         [ { arr: [int] },                             false ],
     ], function (str_or_props) {
-        var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
+        var t = tbase.from(str_or_props)
         return t.is_generic
     })
 })
@@ -237,7 +237,7 @@ test('toString', function (t) {
         [ {base:'str', name: 'i'},                          'i' ],
 
     ], function (args) {
-        var t = typeof args === 'string' ? tbase.lookup(args) : tbase.create(args)
+        var t = tbase.from(args)
         return t.toString()
     })
 })
@@ -283,7 +283,7 @@ test('create() and to_obj()', function (t) {
         [ {name: 'foo', obj: { a: my_int_arr } },      {name_depth:2},     { $name: 'foo', a: { $name: 'my_int_arr', $arr: [ 'my_int' ] } } ],
         [ {name: 'foo', obj: { a: int_arr } },         {name_depth:1},     { $name: 'foo', a: [ 'int' ] } ],
     ], function (str_or_props, opt) {
-        var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
+        var t = tbase.from(str_or_props)
         return t.to_obj(opt)
     })
 })
@@ -364,7 +364,7 @@ test('checkv()', function (t) {
         [ { mul: ['int', 'str'] }, null,           0,       [ null, 'does not match multi-type: null: {"$mul":["int","str"]}' ] ],
     ], function (props, v, quiet) {
         if (v === 'func') { v = function () {} }
-        var t = typeof props === 'string' ? tbase.lookup(props) : tbase.create(props)
+        var t = tbase.from(props)
         if (tbase)
         var res = null
         var estr = null
