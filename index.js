@@ -249,7 +249,7 @@ function BlbType (props, opt) {
 BlbType.prototype = extend(Type.prototype, {
     constructor: BlbType,
     checkv: function (v, quiet) {
-        if (v == null) { return quiet ? false : err('not a blob: ' + v) }
+        if (v == null) { return (quiet ? false : err('not a blob: ' + v)) }
         switch (typeof v) {
             case 'string':
                 return v[0] === '0' && v[1] === 'x' || (quiet ? false : err('not a blob: ' + v))
@@ -257,11 +257,10 @@ BlbType.prototype = extend(Type.prototype, {
                 if (Array.isArray(v) || ArrayBuffer.isView(v)) {
                     return true
                 }
-                var t = v.$t || v.$typ || v.$type
-                if (t !== 'b' && t !== 'blb' && t !== 'blob') { return quiet ? false : err('not a blob: ' + v)}
-                return true
+                var t = v.$t || v.$typ || v.$type || (quiet ? false : err('not a blob: ' + v))
+                return { X: true, blb: true, blob: true }[t] || (quiet ? false : err('not a blob: ' + v))
             default:
-                return quiet ? false : err('not a blob: ' + v)
+                return (quiet ? false : err('not a blob: ' + v))
         }
     }
 })
@@ -275,7 +274,7 @@ BooType.prototype = extend(Type.prototype, {
     checkv: function (v, quiet) {
         switch (typeof v) {
             case 'number': case 'boolean': return true
-            default: return quiet ? false : err('not a boolean: ' + v)
+            default: return (quiet ? false : err('not a boolean: ' + v))
         }
     }
 })
@@ -332,7 +331,7 @@ MulType.prototype = extend(Type.prototype, {
                 return true
             }
         }
-        return quiet ? false : err('does not match multi-type: ' + v + ': ' + this.toString())
+        return (quiet ? false : err('does not match multi-type: ' + v + ': ' + this.toString()))
     },
     // container iff mul contains a container
     _to_obj: function (opt, depth) {
