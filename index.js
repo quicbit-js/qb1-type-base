@@ -657,13 +657,13 @@ function create (props, opt) {
     var base
     var pbase = props.base
     if (ret.arr) {
-        ret.arr = ret.arr.map(function (t) { return create_or_lookup(t, opt) })
+        ret.arr = ret.arr.map(function (t) { return create_from(t, opt) })
         base = 'arr'
     } else if (ret.mul) {
-        ret.mul = ret.mul.map(function (t) { return create_or_lookup(t, opt) })
+        ret.mul = ret.mul.map(function (t) { return create_from(t, opt) })
         base = 'mul'
     } else if (ret.obj) {
-        ret.obj = qbobj.map(ret.obj, null, function (k, t) { return create_or_lookup(t, opt) })
+        ret.obj = qbobj.map(ret.obj, null, function (k, t) { return create_from(t, opt) })
         base = 'obj'
     } else {
         pbase != null || err('no base specified')
@@ -676,15 +676,6 @@ function create (props, opt) {
     ({nul:1, '*':1, typ:1}[base]) == null || err('type ' + base + ' cannot be created using properties, use lookup() instead')
     ret.name !== base && ret.tinyname !== base && ret.fullname !== base || err('cannot redefine a base type: ' + base)
     return _create(base, ret, opt)
-}
-
-function create_or_lookup (v, opt) {
-    if (v.type === 'type') { return v }
-    if (typeof v === 'string') {
-        return lookup(v, opt) || v      // allow unresolved references
-    } else {
-        return create(v, opt)
-    }
 }
 
 function err (msg) { throw Error(msg) }
@@ -713,6 +704,16 @@ function lookup (base_name, opt) {
     }
 }
 
+function create_from (v, opt) {
+    opt = opt || {}
+    if (v.type === 'type') { return v }
+    if (typeof v === 'string') {
+        return lookup(v, opt) || (opt.allow_unresolved ? v : err('no such type'))
+    } else {
+        return create(v, opt)
+    }
+}
+
 // *** FINISH PROTOTYPE SETUP ***
 
 // Create a single set of base types
@@ -738,6 +739,7 @@ function is_type_of (subname, tname) {
 
 
 module.exports = {
+    from: create_from,          // flexible create - (from properties) or lookup (of string)
     create: create,
     lookup: lookup,
     props: function () { return PROPS },

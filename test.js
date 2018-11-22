@@ -410,17 +410,17 @@ test('create() and obj() with trivial multi-types', function (t) {
 })
 
 
-test('create() and obj() with unresolved types (string)', function (t) {
-    var mul1 = tbase.create({base: 'mul', name: 'my_mul1', mul: ['foo'] })
+test('from() and obj() with unresolved types (string)', function (t) {
+    var mul1 = tbase.create({base: 'mul', name: 'my_mul1', mul: ['foo'] }, {allow_unresolved: 1})
     var mul_arr = tbase.create({base: 'arr', arr: [ mul1 ]})
     t.table_assert([
-        [ 'props',                   'opt',              'exp'  ],
-        [ {obj: {a: mul1}},          null,               { a: 'foo' } ],
-        [ {obj: {a: mul_arr}},       null,               { a: ['foo'] } ],
+        [ 'props',                   'opt',                             'exp'  ],
+        [ {obj: {a: mul1}},          {allow_unresolved:1},               { a: 'foo' } ],
+        [ {obj: {a: mul_arr}},       {allow_unresolved:1},               { a: ['foo'] } ],
 
     ], function (props, opt) {
-        var t = tbase.create(props)
-        return t.to_obj(opt)
+        var t = tbase.from(props, opt)
+        return t.to_obj()
     })
 })
 
@@ -428,14 +428,14 @@ test('obj() with references', function (t) {
     var my_int = tbase.create({base: 'int', name: 'my_int'})
     var my_int_arr = tbase.create({base: 'arr', name: 'my_int_arr', arr: [ my_int ]})
     t.table_assert([
-        [ 'str_or_props',                             'opt',              'exp'  ],
-        [ {obj: {a: 'unresolved'}},                    null,               { a: 'unresolved' } ],
-        [ {obj: {'b*': 'unresolved'}},                 null,               { 'b*': 'unresolved' } ],
-        [ {arr: ['another_unknown']},                  null,               ['another_unknown'] ],
-        [ {mul: ['foo_boo','str']},                    null,               { $mul: [ 'foo_boo', 'str' ] } ],
+        [ 'str_or_props',                             'opt',                    'exp'  ],
+        [ {obj: {a: 'unresolved'}},                   {allow_unresolved:1},               { a: 'unresolved' } ],
+        [ {obj: {'b*': 'unresolved'}},                 {allow_unresolved:1},               { 'b*': 'unresolved' } ],
+        [ {arr: ['another_unknown']},                  {allow_unresolved:1},               ['another_unknown'] ],
+        [ {mul: ['foo_boo','str']},                    {allow_unresolved:1},               { $mul: [ 'foo_boo', 'str' ] } ],
     ], function (str_or_props, opt) {
-        var t = typeof str_or_props === 'string' ? tbase.lookup(str_or_props) : tbase.create(str_or_props)
-        return t.to_obj(opt)
+        var t = tbase.from(str_or_props, opt)
+        return t.to_obj()
     })
 })
 
