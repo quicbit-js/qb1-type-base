@@ -186,7 +186,7 @@ AnyType.prototype = extend(Type.prototype, {
     constructor: AnyType,
     complex: true,
     container: true,
-    checkv: function (v, quiet) { return typeof v !== 'function' || (quiet ? false : err('not a value: ' + v))},
+    checkv: function (v, null_ok, quiet) { return typeof v !== 'function' || (quiet ? false : err('not a value: ' + v))},
 })
 
 // Array
@@ -205,7 +205,10 @@ ArrType.prototype = extend(Type.prototype, {
     constructor: ArrType,
     complex: true,                                      // represents a variety of types
     container: true,                                    // holds multiple instances
-    checkv: function (v, quiet) { return Array.isArray(v) || ArrayBuffer.isView(v) || (quiet ? false : err('not an array: ' + v)) },
+    checkv: function (v, null_ok, quiet) {
+        return (null_ok && v == null) || Array.isArray(v) || ArrayBuffer.isView(v)
+            || (quiet ? false : err('not an array: ' + v))
+    },
     add_type: function (t) {
         var i = this.arr.length
         this.arr[i] = t
@@ -248,8 +251,8 @@ function BlbType (props, opt) {
 }
 BlbType.prototype = extend(Type.prototype, {
     constructor: BlbType,
-    checkv: function (v, quiet) {
-        if (v == null) { return (quiet ? false : err('not a blob: ' + v)) }
+    checkv: function (v, null_ok, quiet) {
+        if (v == null) { return null_ok || (quiet ? false : err('not a blob: ' + v)) }
         switch (typeof v) {
             case 'string':
                 return v[0] === '0' && v[1] === 'x' || (quiet ? false : err('not a blob: ' + v))
@@ -271,7 +274,8 @@ function BooType (props, opt) {
 }
 BooType.prototype = extend(Type.prototype, {
     constructor: BooType,
-    checkv: function (v, quiet) {
+    checkv: function (v, null_ok, quiet) {
+        if (null_ok && v == null) { return true }
         switch (typeof v) {
             case 'number': case 'boolean': return true
             default: return (quiet ? false : err('not a boolean: ' + v))
@@ -285,7 +289,9 @@ function BytType (props, opt) {
 }
 BytType.prototype = extend(Type.prototype, {
     constructor: BytType,
-    checkv: function (v, quiet) { return v != null && v >= 0 && v <= 255 || (quiet ? false : err('not a byte: ' + v)) }
+    checkv: function (v, null_ok, quiet) {
+        if (v == null) { return null_ok }
+        return (v >= 0 && v <= 255) || (quiet ? false : err('not a byte: ' + v)) }
 })
 
 // Decimal
@@ -294,7 +300,7 @@ function DecType (props, opt) {
 }
 DecType.prototype = extend(Type.prototype, {
     constructor: DecType,
-    checkv: function (v, quiet) { return typeof v === 'number' || (quiet ? false : err('not a decimal: ' + v))}
+    checkv: function (v, null_ok, quiet) { return (null_ok && v == null) || typeof v === 'number' || (quiet ? false : err('not a decimal: ' + v))}
 })
 
 // Float
@@ -303,7 +309,7 @@ function FltType (props, opt) {
 }
 FltType.prototype = extend(Type.prototype, {
     constructor: FltType,
-    checkv: function (v, quiet) { return typeof v === 'number' || (quiet ? false : err('not a float: ' + v)) }
+    checkv: function (v, null_ok, quiet) { return (null_ok && v == null) || typeof v === 'number' || (quiet ? false : err('not a float: ' + v)) }
 })
 
 // Multi Type
@@ -324,10 +330,11 @@ function MulType (props, opt) {
 MulType.prototype = extend(Type.prototype, {
     constructor: MulType,
     complex: true,
-    checkv: function (v, quiet) {
+    checkv: function (v, null_ok, quiet) {
+        if (null_ok && v == null) { return true }
         var mul = this.mul
         for (var i = 0; i < mul.length; i++) {
-            if (mul[i].checkv(v, true)) {
+            if (mul[i].checkv(v, null_ok, true)) {
                 return true
             }
         }
@@ -378,8 +385,8 @@ function IntType (props, opt) {
 }
 IntType.prototype = extend(Type.prototype, {
     constructor: IntType,
-    checkv: function (v, quiet) {
-        return typeof v === 'number' && v > MIN_INT && v < MAX_INT || (quiet ? false : err('not an integer: ' + v))
+    checkv: function (v, null_ok, quiet) {
+        return (null_ok && v == null) || typeof v === 'number' && v > MIN_INT && v < MAX_INT || (quiet ? false : err('not an integer: ' + v))
     }
 })
 
@@ -389,8 +396,8 @@ function NumType (props, opt) {
 }
 NumType.prototype = extend(Type.prototype, {
     constructor: NumType,
-    checkv: function (v, quiet) {
-        return typeof v === 'number' || (quiet ? false : err('not a number: ' + v))
+    checkv: function (v, null_ok, quiet) {
+        return (null_ok && v == null) || typeof v === 'number' || (quiet ? false : err('not a number: ' + v))
     }
 })
 
@@ -481,9 +488,10 @@ ObjType.prototype = extend(Type.prototype, {
     constructor: ObjType,
     complex: true,
     container: true,
-    checkv: function (v, quiet) {
-        return v != null && typeof v === 'object' && !Array.isArray(v) && !ArrayBuffer.isView(v) ||
-            (quiet ? false : err('not an object: ' + v))
+    checkv: function (v, null_ok, quiet) {
+        if (v == null) { return null_ok }
+        return (typeof v === 'object' && !Array.isArray(v) && !ArrayBuffer.isView(v) ||
+            (quiet ? false : err('not an object: ' + v)))
     },
     fieldtyp: field_type,        // deprecate fieldtyp
     field_type: field_type,
@@ -565,7 +573,7 @@ function StrType (props, opt) {
 }
 StrType.prototype = extend(Type.prototype, {
     constructor: StrType,
-    checkv: function (v, quiet) { return typeof v === 'string' || ( quiet ? false : err('not a string: ' + v))}
+    checkv: function (v, null_ok, quiet) { return (null_ok && v == null) || typeof v === 'string' || ( quiet ? false : err('not a string: ' + v))}
 })
 
 // Type (Type)
