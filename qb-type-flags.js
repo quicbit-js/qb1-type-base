@@ -15,28 +15,27 @@
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-// map of all 14 basic type codes to type code name (align with qb1-type-base).
+// map of all 14 basic type codes to type code name (align with qb1-type-base codes).
 // verified by tests against qb1-type-base
 var CODE2NAME = [
-    'nul',
-    'str',
-    'num',
-    'boo',
-    'arr',
-    'obj',
-    'byt',
-    'int',
-    'dec',
-    'flt',
-    'blb',
-    'any',
-    'mul',
-    'typ'
+    'nul',      // 0
+    'str',      // 1
+    'num',      // 2
+    'boo',      // 3
+    'arr',      // 4
+    'obj',      // 5
+    'byt',      // 6
+    'int',      // 7
+    'dec',      // 8
+    'flt',      // 9
+    'blb',      // 10
+    'any',      // 11
+    'mul',      // 12
+    'typ'       // 13
 ]
 
 // FLAG: name -> hex flag (1 through E)
 var FLAG = CODE2NAME.reduce(function (m, n, i) { m[n] = 1 << i; return m }, {__proto__: null})
-FLAG['*'] = FLAG.any        // alias for any
 var FLAG_NAME = CODE2NAME.reduce(function (a, n) { a[FLAG[n]] = n; return a}, [] )
 
 var NUL = FLAG.nul
@@ -56,7 +55,6 @@ var TYP = FLAG.typ
 
 function err (msg) { throw Error(msg) }
 
-// return all relevant flags for the given type
 function vtype (v) {
     if (v == null) {
         return NUL
@@ -73,14 +71,12 @@ function vtype (v) {
         case 'boolean':
             return BOO
         case 'object':
-            if (Array.isArray(v)) {
+            if (v.$type) {
+                return FLAG[v.$type] || OBJ
+            } else if (Array.isArray(v)) {
                 return ARR
             } else if (ArrayBuffer.isView(v)) {
                 return BLB
-            } else if (v.$type === 'typ') {
-                return TYP
-            } else if (v.$type === '*') {
-                return ANY
             } else {
                 return OBJ
             }
@@ -107,7 +103,7 @@ function to_single (tflag) {
     if ( (tflag & NUM) || ((tflag & (FLT|DEC)) === (FLT|DEC)) ) {
         tflag |= NUM
         tflag &= ~(INT|DEC|FLT|BYT)                 // clear INT|DEC|FLT|BYT
-    } else if ((tflag & (FLT|DEC)) !== 0) {     // FLT and DEC set
+    } else if ((tflag & (FLT|DEC)) !== 0) {         // FLT and DEC set
         tflag &= ~(INT|BYT)                         // clear INT|BYT
     } else if ((tflag & INT)) {
         tflag &= ~(BYT)                             // clear BYT

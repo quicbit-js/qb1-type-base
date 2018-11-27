@@ -22,7 +22,7 @@ var qb_tflags = require('./qb-type-flags')
 var TYPE_DATA_BY_NAME = {
 // name
     //   tinyname  fullname  code   description
-    '*': [ '*',   'any',     11,     'Represents any value or type.  For example, [*] is an array of anything' ],
+    any: [ '*',   'any',     11,     'Represents any value or type.  For example, [*] is an array of anything' ],
     arr: [ 'a',   'array',   4,     'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]' ],
     blb: [ 'X',   'blob',    10,     'A sequence of bytes' ],
     boo: [ 'b',   'boolean', 3,     'A true or false value.  Also can be a 0 or non-zero byte' ],
@@ -39,7 +39,7 @@ var TYPE_DATA_BY_NAME = {
 }
 
 var CONSTRUCTORS = {
-    '*': AnyType,
+    any: AnyType,
     arr: ArrType,
     boo: BooType,
     blb: BlbType,
@@ -180,7 +180,7 @@ Type.prototype = {
 
 // Any
 function AnyType (props, opt) {
-    Type.call(this, '*', props, opt)
+    Type.call(this, 'any', props, opt)
 }
 AnyType.prototype = extend(Type.prototype, {
     constructor: AnyType,
@@ -216,7 +216,7 @@ ArrType.prototype = extend(Type.prototype, {
             t.parent = this
             t.parent_ctx = i
         }
-        this.is_generic = (i === 0 && this.arr[0].name === '*')
+        this.is_generic = (i === 0 && this.arr[0].name === 'any')
     },
 
     vtype: function (i) {
@@ -540,8 +540,8 @@ ObjType.prototype = extend(Type.prototype, {
         // generic means has *no* key specifications { '*': 'some-type' }
         this.is_generic = !this.sfields && !this.pfields
 
-        // generic_any means has no key or type specifications at all { '*':'*' }
-        this.is_generic_any = this.is_generic && (this.match_all && this.match_all.name === '*')
+        // generic_any means has no key or type specifications at all { '*':'any' }
+        this.is_generic_any = this.is_generic && (this.match_all && this.match_all.name === 'any')
         this._fields = null         // reset
     },
     // return all fields in order of sfields, pfields, then match_all
@@ -558,7 +558,7 @@ ObjType.prototype = extend(Type.prototype, {
     _to_obj: function (opt, depth) {
         if (this.name && depth >= opt.name_depth) {
             // the base object instance is given a familiar object look '{}' - which is fine because
-            // fieldless objects are checked/blocked.  created objects with same any-pattern are returned as {'*':'*'}
+            // fieldless objects are checked/blocked.  created objects with same any-pattern are returned as {'*':'any'}
             return this.name === 'obj' ? {} : this.name
         }
         var ret = Type.prototype._basic_to_obj.call(this)
@@ -598,7 +598,7 @@ NulType.prototype = extend(Type.prototype, {
 // multi-type 'mul' is special in that without a type list it matches nothing, but we allow creation to
 // complete the set of base type names and descriptions.
 function create_immutable_types () {
-    var any = _create('*', type_props('*'), {immutable: true})
+    var any = _create('any', type_props('any'), {immutable: true})
     var ret = [any]
     ;['arr', 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'typ'].forEach(function (n) {
         ret.push(_create(n, type_props(n, any), {immutable: true}))
@@ -681,7 +681,7 @@ function create (props, opt) {
     if (pbase) {
         pbase === base || err('base mismatch: ' + base + ' and ' + pbase)
     }
-    ({nul:1, '*':1, typ:1}[base]) == null || err('type ' + base + ' cannot be created using properties, use lookup() instead')
+    ({nul:1, 'any':1, typ:1}[base]) == null || err('type ' + base + ' cannot be created using properties, use lookup() instead')
     ret.name !== base && ret.tinyname !== base && ret.fullname !== base || err('cannot redefine a base type: ' + base)
     return _create(base, ret, opt)
 }
@@ -702,8 +702,8 @@ function lookup (base_name, opt) {
         return null
     }
     if (opt && opt.create_opt) {
-        // return a base with all the same settings as the lookup instance (such as object {'*':'*'}) , but is a copy (for building graphs)
-        var any = (base_type.name === 'obj' || base_type.name === 'arr') ? _create('*', type_props('*'), opt.create_opt) : null
+        // return a base with all the same settings as the lookup instance (such as object {'*':'any'}) , but is a copy (for building graphs)
+        var any = (base_type.name === 'obj' || base_type.name === 'arr') ? _create('any', type_props('any'), opt.create_opt) : null
         return _create(base_type.name, type_props(base_type.name, any), opt.create_opt)
     } else {
         // return immutable shared instance
@@ -745,6 +745,10 @@ function is_type_of (subname, tname) {
     return qb_tflags.is_type_of(subt && subt.name, t && t.name)
 }
 
+function code_of (v) {
+    var f = qb_tflags.vtype(v)
+    return CODES_BY_NAME[qb_tflags.FLAG_NAME[f]]
+}
 
 module.exports = {
     from: create_from,          // flexible create - (from properties) or lookup (of string)
@@ -762,6 +766,7 @@ module.exports = {
     // what type codes to make public other than the basic codes.
     is_type_of: is_type_of,
     arr_type: arr_type,
+    code_of: code_of,
 
     // exposed for testing only
     _unesc_caret: unesc_caret,

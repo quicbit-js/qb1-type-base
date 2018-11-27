@@ -17,8 +17,8 @@
 var test = require('test-kit').tape()
 var qbobj = require('qb-obj')
 var tbase = require('.')
-
-function err (msg) { throw Error(msg) }
+var TYPES = tbase.types_by_all_names()
+var CODE2TYPE = tbase.types_by_code()
 
 test('props', function (t) {
     t.table_assert([
@@ -32,32 +32,32 @@ test('props', function (t) {
 
 test('types', function (t) {
     t.table_assert([
-        [ 'name_prop',       'exp' ],
-        [ 'tinyname',       [ '*', 'a', 'X', 'b', 'x', 'd', 'f', 'i', 'm', 'N', 'n', 'o', 's', 't' ] ],
-        [ 'name',           [ '*', 'arr', 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'typ' ] ],
-        [ 'fullname',       [ 'any', 'array', 'blob', 'boolean', 'byte', 'decimal', 'float', 'integer', 'multi', 'null', 'number', 'object', 'string', 'type' ] ],
+        [ 'name_prop', 'exp' ],
+        [ 'tinyname',  [ '*', 'a', 'X', 'b', 'x', 'd', 'f', 'i', 'm', 'N', 'n', 'o', 's', 't' ] ],
+        [ 'name',      [ 'any', 'arr', 'blb', 'boo', 'byt', 'dec', 'flt', 'int', 'mul', 'nul', 'num', 'obj', 'str', 'typ' ] ],
+        [ 'fullname',  [ 'any', 'array', 'blob', 'boolean', 'byte', 'decimal', 'float', 'integer', 'multi', 'null', 'number', 'object', 'string', 'type' ] ],
     ], function(name_prop) { return tbase.types().map(function (t) { return t[name_prop]}) })
 })
 
 test('lookup', function (t) {
     t.table_assert([
-        [ 'name',            'opt',                       'exp' ],
-        [ 's',               null,                       { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: true } ],
-        [ 'str',             null,                       { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: true } ],
-        [ 'string',          null,                       { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: true } ],
-        [ 'object',          null,                       { same_inst: true, name: 'obj', tinyname: 'o', fullname: 'object', base: 'obj', immutable: true }],
-        [ 'arr',             null,                       { same_inst: true, name: 'arr', tinyname: 'a', fullname: 'array', base: 'arr', immutable: true } ],
-        [ 'typ',             null,                       { same_inst: true, name: 'typ', tinyname: 't', fullname: 'type', base: 'typ', immutable: true } ],
-        [ 'any',             null,                       { same_inst: true, name: '*', tinyname: '*', fullname: 'any', base: '*', immutable: true } ],
-        [ 's',               {create_opt:{}},            { same_inst: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: false } ],
-        [ 'str',             {create_opt:{}},            { same_inst: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: false } ],
-        [ 'string',          {create_opt:{}},            { same_inst: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: false } ],
-        [ 'object',          {create_opt:{}},            { same_inst: false, name: 'obj', tinyname: 'o', fullname: 'object', base: 'obj', immutable: false }],
-        [ 'arr',             {create_opt:{}},            { same_inst: false, name: 'arr', tinyname: 'a', fullname: 'array', base: 'arr', immutable: false } ],
-        [ 'typ',             {create_opt:{}},            { same_inst: false, name: 'typ', tinyname: 't', fullname: 'type', base: 'typ', immutable: false } ],
-        [ 'any',             {create_opt:{}},            { same_inst: false, name: '*', tinyname: '*', fullname: 'any', base: '*', immutable: false } ],
-        [ 'foo',             null,                       null ],
-        [ 'foo',             {create_opt:{}},            null ],
+        [ 'name',   'opt',              'exp' ],
+        [ 's',      null,               { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: true } ],
+        [ 'str',    null,               { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: true } ],
+        [ 'string', null,               { same_inst: true, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: true } ],
+        [ 'object', null,               { same_inst: true, name: 'obj', tinyname: 'o', fullname: 'object', base: 'obj', immutable: true } ],
+        [ 'arr',    null,               { same_inst: true, name: 'arr', tinyname: 'a', fullname: 'array', base: 'arr', immutable: true } ],
+        [ 'typ',    null,               { same_inst: true, name: 'typ', tinyname: 't', fullname: 'type', base: 'typ', immutable: true } ],
+        [ 'any',    null,               { same_inst: true, name: 'any', tinyname: '*', fullname: 'any', base: 'any', immutable: true } ],
+        [ 's',      { create_opt: {} }, { same_inst: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: false } ],
+        [ 'str',    { create_opt: {} }, { same_inst: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: false } ],
+        [ 'string', { create_opt: {} }, { same_inst: false, name: 'str', tinyname: 's', fullname: 'string', base: 'str', immutable: false } ],
+        [ 'object', { create_opt: {} }, { same_inst: false, name: 'obj', tinyname: 'o', fullname: 'object', base: 'obj', immutable: false } ],
+        [ 'arr',    { create_opt: {} }, { same_inst: false, name: 'arr', tinyname: 'a', fullname: 'array', base: 'arr', immutable: false } ],
+        [ 'typ',    { create_opt: {} }, { same_inst: false, name: 'typ', tinyname: 't', fullname: 'type', base: 'typ', immutable: false } ],
+        [ 'any',    { create_opt: {} }, { same_inst: false, name: 'any', tinyname: '*', fullname: 'any', base: 'any', immutable: false } ],
+        [ 'foo',    null,               null ],
+        [ 'foo',    { create_opt: {} }, null ],
     ], function (name, opt) {
         var t = tbase.lookup(name, opt)
         if (t === null) { return null }
@@ -106,12 +106,12 @@ test('byname', function (t) {
 test('create errors', function (t) {
     t.table_assert([
         [ 'create',                          'opt',   'exp'  ],
-        [ {base: 'obj', name: 'foo' },       { custom_props: {tinyname: 'f'}},   /custom properties should have \$ prefix/ ],
-        [ {base: 'obj', name: 'foo' },       { custom_props: {$tinyname: 'f'}},  /custom property cannot shadow/ ],
-        [ {name: 'foo' },                    null,                               /no base specified/ ],
-        [ {base: 'foo' },                    null,                               /unknown base/ ],
-        [ {base: 'nul'},                     null,                               /cannot be created using properties/ ],
-        [ {base: '*'},                       null,                               /cannot be created using properties/ ],
+        // [ {base: 'obj', name: 'foo' },       { custom_props: {tinyname: 'f'}},   /custom properties should have \$ prefix/ ],
+        // [ {base: 'obj', name: 'foo' },       { custom_props: {$tinyname: 'f'}},  /custom property cannot shadow/ ],
+        // [ {name: 'foo' },                    null,                               /no base specified/ ],
+        // [ {base: 'foo' },                    null,                               /unknown base/ ],
+        // [ {base: 'nul'},                     null,                               /cannot be created using properties/ ],
+        [ {base: 'any'},                     null,                               /cannot be created using properties/ ],
         [ {base: 'typ'},                     null,                               /cannot be created using properties/ ],
         [ {base: 'int', tinyname: 'foo' },   null,                               /tinyname without name/ ],
         [ {base: 'int', fullname: 'foo' },   null,                               /fullname without name/ ],
@@ -180,7 +180,7 @@ test('arr vtype', function (t) {
         [ 'props',                     'i', 'exp' ],
         [ { arr: ['i'] },              0,   'int' ],
         [ { arr: ['i'] },              1,   'int' ],
-        [ { base: 'arr', arr: ['*'] }, 1,   '*' ],
+        [ { base: 'arr', arr: ['*'] }, 1,   'any' ],
     ], function (props, i) {
         var typ = tbase.create(props)
         return typ.vtype(i).toString()
@@ -259,11 +259,11 @@ test('create() and to_obj()', function (t) {
         [ 'o',                                         {name_depth:0},     {} ],
         [ 'str',                                       {name_depth:1},     { $base: 'str', $name: 'str', $desc: 'A string of unicode characters (code points in range 0..1114111)', $tinyname: 's', $fullname: 'string' } ],
         [ 'int',                                       {name_depth:1},     { $base: 'int', $name: 'int', $desc: 'An unbounded integer (range ..)', $tinyname: 'i', $fullname: 'integer' }   ],
-        [ 'arr',                                       {name_depth:1},     { $name: 'arr', $desc: 'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]', $tinyname: 'a', $fullname: 'array', $arr: [ '*' ] } ],
-        [ 'obj',                                       {name_depth:1},     { $name: 'obj', $desc: 'A record-like object with fixed field names, or flexible fields (using *-expressions)', $tinyname: 'o', $fullname: 'object', '*': '*' } ],
+        [ 'arr',                                       {name_depth:1},     { $name: 'arr', $desc: 'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]', $tinyname: 'a', $fullname: 'array', $arr: [ 'any' ] } ],
+        [ 'obj',                                       {name_depth:1},     { $name: 'obj', $desc: 'A record-like object with fixed field names, or flexible fields (using *-expressions)', $tinyname: 'o', $fullname: 'object', '*': 'any' } ],
         [ {base: 'obj', obj: { a: arr } },             null,               { a: [] } ],
-        [ {base: 'obj', obj: { '*':any } },            null,               {'*':'*'} ],        // custom object has this different look from base type '{}' - though functionally the same.
-        [ {base: 'arr', arr: ['*']},                   null,               ['*'] ],            // custom array has this different look from base type '[]' - though functionally the same.
+        [ {base: 'obj', obj: { '*':any } },            null,               {'*':'any'} ],        // custom object has this different look from base type '{}' - though functionally the same.
+        [ {base: 'arr', arr: ['*']},                   null,               ['any'] ],            // custom array has this different look from base type '[]' - though functionally the same.
         [ {base: 'int'},                               null,               { $base: 'int' }],
         [ {base: 'int', name: 'foo'},                  null,               'foo' ],
         [ int_arr,                                     null,               [ 'int' ] ],
@@ -631,6 +631,36 @@ test('is_type_of', function (t) {
     })
 })
 
+test('code_of', function (t) {
+    t.table_assert([
+        [ 'v',              'exp' ],
+        [ null,             { nul: 0 } ],
+        [ 'x',              { str: 1 } ],
+        [ {$type: 'num'},   { num: 2 } ],
+        [ true,             { boo: 3 } ],
+        [ [],               { arr: 4 } ],
+        [ {},               { obj: 5 } ],
+        [ 0,                { byt: 6 } ],
+        [ 9,                { byt: 6 } ],
+        [ 256,              { int: 7 } ],
+        [ -1,               { int: 7 } ],
+        [ {$type: 'dec'},   { dec: 8 } ],
+        [ 1.2,              { flt: 9 } ],
+        [ 'UAR',            { blb: 10 } ],
+        [ { $type: 'any' }, { any: 11 } ],
+        [ { $type: 'mul' }, { mul: 12 } ],
+        [ { $type: 'typ' }, { typ: 13 } ],
+    ], function (v) {
+        if (v === 'UAR') {
+            v = new Uint8Array(0)
+        }
+        var c = tbase.code_of(v)
+        var ret = {}
+        ret[CODE2TYPE[c]] = c
+        return ret
+    })
+})
+
 //
 // qb-type-flag tests
 //
@@ -640,20 +670,23 @@ var FLAG_NAME = qb_tflag.FLAG_NAME
 
 test('vtype', function (t) {
     t.table_assert([
-        [ 'v',   'exp' ],
-        [ null,  { nul: 1 } ],
-        [ 'x',   { str: 2 } ],
-        [ true,  { boo: 8 } ],
-        [ [],    { arr: 16 } ],
-        [ {},    { obj: 32 } ],
-        [ 0,     { byt: 64 } ],
-        [ 9,     { byt: 64 } ],
-        [ 256,   { int: 128 } ],
-        [ -1,    { int: 128 } ],
-        [ 1.2,   { flt: 512 } ],
-        [ 'UAR', { blb: 1024 } ],
-        [ {$type:'*'}, { any: 2048 } ],
-        [ {$type:'typ'}, { typ: 8192 } ],
+        [ 'v',              'exp' ],
+        [ null,             { nul: 1 } ],
+        [ 'x',              { str: 2 } ],
+        [ { $type: 'num' }, { num: 4 } ],
+        [ true,             { boo: 8 } ],
+        [ [],               { arr: 16 } ],
+        [ {},               { obj: 32 } ],
+        [ 0,                { byt: 64 } ],
+        [ 9,                { byt: 64 } ],
+        [ 256,              { int: 128 } ],
+        [ -1,               { int: 128 } ],
+        [ { $type: 'dec' }, { dec: 256 } ],
+        [ 1.2,              { flt: 512 } ],
+        [ 'UAR',            { blb: 1024 } ],
+        [ { $type: 'any' }, { any: 2048 } ],
+        [ { $type: 'mul' }, { mul: 4096 } ],
+        [ { $type: 'typ' }, { typ: 8192 } ],
     ], function (v) {
         if (v === 'UAR') {
             v = new Uint8Array(0)
@@ -741,7 +774,6 @@ test('errors', function (t) {
 })
 
 
-var TYPES = tbase.types_by_all_names()
 test('CODE2NAME', function (t) {
     qb_tflag.CODE2NAME.forEach(function (name, code) {
         var type = TYPES[name]
