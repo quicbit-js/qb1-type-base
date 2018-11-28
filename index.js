@@ -366,6 +366,16 @@ MulType.prototype = extend(Type.prototype, {
         }
         return this._byname
     },
+    types_for_code: function (c) {
+        var mul = this .mul
+        var ret = []
+        for (var i=0; i<mul.length; i++) {
+            if (mul[i].code === c) {
+                ret.push(mul[i])
+            }
+        }
+        return ret
+    },
     add_type: function (t) {
         if (this.link_children) {
             t.parent = this
@@ -686,7 +696,9 @@ function create (props, opt) {
     return _create(base, ret, opt)
 }
 
-function err (msg) { throw Error(msg) }
+function err (msg) {
+    throw Error(msg)
+}
 
 // lookup a base type.  return the shared immutible instance or create a new copy using 'create_opt'.
 // return null if not defined.

@@ -39,6 +39,20 @@ test('types', function (t) {
     ], function(name_prop) { return tbase.types().map(function (t) { return t[name_prop]}) })
 })
 
+test('types_for_code', function (t) {
+    t.table_assert([
+        [ 'props',                 'tc_name', 'exp' ],
+        [ { mul: ['int'] },        'int',     [ 'int' ] ],
+        [ { mul: ['int'] },        'str',     [] ],
+        [ { mul: ['int', 'str'] }, 'str',     [ 'str' ] ],
+        [ { mul: ['int', 'str'] }, 'boo',     [] ],
+
+    ], function (props, tc_name) {
+        var t = tbase.create(props)
+        return t.types_for_code(TYPES[tc_name].code).map(function (t) { return t.name })
+    })
+})
+
 test('lookup', function (t) {
     t.table_assert([
         [ 'name',   'opt',              'exp' ],
