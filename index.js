@@ -22,15 +22,15 @@ var qb_tflags = require('./qb-type-flags')
 var TYPE_DATA_BY_NAME = {
 // name
     //   tinyname  fullname  code   description
-    any: [ '*',   'any',     11,     'Represents any value or type.  For example, [*] is an array of anything' ],
+    any: [ '*',   'any',     11,    'Represents any value or type.  For example, [*] is an array of anything' ],
     arr: [ 'a',   'array',   4,     'Array of values matching types in a *cycle* (also see multi type).  [str] is an array of strings while [str, int] is an alternating array of [str, int, str, int, ...]' ],
-    blb: [ 'X',   'blob',    10,     'A sequence of bytes' ],
+    blb: [ 'X',   'blob',    10,    'A sequence of bytes' ],
     boo: [ 'b',   'boolean', 3,     'A true or false value.  Also can be a 0 or non-zero byte' ],
     byt: [ 'x',   'byte',    6,     'An integer in range 0..255'   ],
     dec: [ 'd',   'decimal', 8,     'An unbounded base-10 number (range ~~)' ],
     flt: [ 'f',   'float',   9,     'An unbounded base-2 number (range ~~)' ],
     int: [ 'i',   'integer', 7,     'An unbounded integer (range ..)' ],
-    mul: [ 'm',   'multi',   12,     'A set of possible types in the form t1|t2|t3, (also see array cycling types)'   ],
+    mul: [ 'm',   'multi',   12,    'A set of possible types in the form t1|t2|t3, (also see array cycling types)'   ],
     nul: [ 'N',   'null',    0,     'A null value which represents "not-set" for most situations' ],
     num: [ 'n',   'number',  2,     'Any rational number including decimals, floats, and integers' ],
     obj: [ 'o',   'object',  5,     'A record-like object with fixed field names, or flexible fields (using *-expressions)'  ],
@@ -55,7 +55,32 @@ var CONSTRUCTORS = {
     typ: TypType,
 }
 
-var CODES_BY_NAME = qbobj.map(TYPE_DATA_BY_NAME,  null, function (k, v) { return v[2] })
+var TCODE = qbobj.map(TYPE_DATA_BY_NAME,  null, function (k, v) { return v[2] })
+var NAMES_BY_CODE = Object.keys(TYPE_DATA_BY_NAME).reduce(function (a, n) { a[TYPE_DATA_BY_NAME[n][2]] = n; return a }, [])
+
+// Type property information including whether they are user-facing and how they are merged.
+
+// type inherit flags (inheriting properties from a base type):
+//
+//      YES_EQL   - inherited. if both are set they must be equal
+//      NO_NEQ    - not inherited.  if both are set they must not be equal
+//      NO        - not inherited.  value is ignored.
+//      YES_MRG   - inherit/merge.  result will be a subset of the container and child value (intersection of constraints)
+var PROPS = [
+    // tinyname     name            fullname        type            description
+    [ 't',         'type',          null,           's|o',          'Describes the type / structure / form of the value'  ],
+    [ 'v',         'value',         null,           '*',            'Value adhering to the type definition'  ],
+    [ 'n',         'name',          null,           's',            'A concise name of the type such as "int" or "arr" or "typ"' ],
+    [ 'd',         'desc',          'description',  's|N',          'A description of the type' ],
+    [ 's',         'stip',          'stipulations', '{s:s|r}|N',    'Stipulations for write validation'  ],
+    [ 'tn',        'tinyname',      null,           's|N',          'The tiny name of a type or property such as "i" or "a" which are defined only for the most common types'  ],
+    [ 'fn',        'fullname',      null,           's|N',          'The full name of a type or property such as "description", "integer" or "array"'  ],
+    [ 'm',         'mul',           'multi',        '[t]',          'Array of possible types for a multi-type'  ],
+    [ 'a',         'arr',           'array',        '[t]',          'Cycle of array types allowed in an array'  ],
+    [ 'b',         'base',          null,           '*',            'Type that the type is based upon / derived from (integer, string, object, array...)'  ],
+].map(function (r) { return new Prop(r[0], r[1], r[2], r[3], r[4]) } ).sort(function (a,b) { return a.name > b.name ? 1 : -1 })
+
+var PROPS_BY_ALL_NAMES = PROPS.reduce(function (m,p) { m[p.name] = m[p.tinyname] = m[p.fullname] = p; return m}, {})
 
 function type_props (name, any) {
     var r = TYPE_DATA_BY_NAME[name]
@@ -70,10 +95,23 @@ function type_props (name, any) {
     return ret
 }
 
+// return the high-level json-like code (nul, str, num, boo, blb, arr, or obj) for a given code
+function jcode (code) {
+    switch (code) {
+        case TCODE.byt: case TCODE.int: case TCODE.flt: case TCODE.dec:
+            return TCODE.num
+        case TCODE.any: case TCODE.mul: case TCODE.typ:
+            return TCODE.obj
+        default:
+            return code
+    }
+}
+
 function Type (base, props, opt) {
     this.immutable = !!(opt && opt.immutable)
     this.base = base
-    this.code = CODES_BY_NAME[base]
+    this.code = TCODE[base]
+    this.jcode = jcode(this.code)
     this.name = props.name || null
     this.desc = props.desc || null
     if (props.name) {
@@ -326,6 +364,7 @@ function MulType (props, opt) {
         props.mul.forEach(function (t) { self.add_type(t) })
     }
     this._byname = null
+    this._by_jcode = null
 }
 MulType.prototype = extend(Type.prototype, {
     constructor: MulType,
@@ -357,7 +396,17 @@ MulType.prototype = extend(Type.prototype, {
         })
         return ret
     },
-    get byname() {
+    // return types indexed by high-level (json-like) code (nul, str, num, boo, blb, arr, or obj)
+    get by_jcode () {
+        if (!this._by_jcode) {
+            this._by_jcode = this.mul.reduce(function (a, t) {
+                if (!a[t.jcode]) { a[t.jcode] = [t] } else { a[t.jcode].push(t) }
+                return a
+            }, [])
+        }
+        return this._by_jcode
+    },
+    get byname () {
         if (!this._byname) {
             this._byname = this.mul.reduce(function (m,t) {
                 m[t.name || t.base] = t; return m },
@@ -365,16 +414,6 @@ MulType.prototype = extend(Type.prototype, {
             )
         }
         return this._byname
-    },
-    types_for_code: function (c) {
-        var mul = this .mul
-        var ret = []
-        for (var i=0; i<mul.length; i++) {
-            if (mul[i].code === c) {
-                ret.push(mul[i])
-            }
-        }
-        return ret
     },
     add_type: function (t) {
         if (this.link_children) {
@@ -397,7 +436,7 @@ IntType.prototype = extend(Type.prototype, {
     constructor: IntType,
     checkv: function (v, null_ok, quiet) {
         return (null_ok && v == null) || typeof v === 'number' && v > MIN_INT && v < MAX_INT || (quiet ? false : err('not an integer: ' + v))
-    }
+    },
 })
 
 // Number
@@ -629,29 +668,6 @@ Prop.prototype = {
     constructor: Prop,
 }
 
-// Type property information including whether they are user-facing and how they are merged.
-
-// type inherit flags (inheriting properties from a base type):
-//
-//      YES_EQL   - inherited. if both are set they must be equal
-//      NO_NEQ    - not inherited.  if both are set they must not be equal
-//      NO        - not inherited.  value is ignored.
-//      YES_MRG   - inherit/merge.  result will be a subset of the container and child value (intersection of constraints)
-var PROPS =
-    [
-        // tinyname     name            fullname        type            description
-        [ 't',         'type',          null,           's|o',          'Describes the type / structure / form of the value'  ],
-        [ 'v',         'value',         null,           '*',            'Value adhering to the type definition'  ],
-        [ 'n',         'name',          null,           's',            'A concise name of the type such as "int" or "arr" or "typ"' ],
-        [ 'd',         'desc',          'description',  's|N',          'A description of the type' ],
-        [ 's',         'stip',          'stipulations', '{s:s|r}|N',    'Stipulations for write validation'  ],
-        [ 'tn',        'tinyname',      null,           's|N',          'The tiny name of a type or property such as "i" or "a" which are defined only for the most common types'  ],
-        [ 'fn',        'fullname',      null,           's|N',          'The full name of a type or property such as "description", "integer" or "array"'  ],
-        [ 'm',         'mul',           'multi',        '[t]',          'Array of possible types for a multi-type'  ],
-        [ 'a',         'arr',           'array',        '[t]',          'Cycle of array types allowed in an array'  ],
-        [ 'b',         'base',          null,           '*',            'Type that the type is based upon / derived from (integer, string, object, array...)'  ],
-    ].map(function (r) { return new Prop(r[0], r[1], r[2], r[3], r[4]) } ).sort(function (a,b) { return a.name > b.name ? 1 : -1 })
-
 function _create (base, props, opt) {
     opt = opt || {}
     var ctor = CONSTRUCTORS[base]
@@ -741,7 +757,6 @@ function create_from (v, opt) {
 var TYPES = create_immutable_types()
 var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
 var TYPES_BY_CODE = TYPES.reduce(function (a,t) { a[t.code] = t; return a}, [])
-var PROPS_BY_ALL_NAMES = PROPS.reduce(function (m,p) { m[p.name] = m[p.tinyname] = m[p.fullname] = p; return m}, {})
 
 function arr_type (a, off, lim) {
     var atype = qb_tflags.arr_types(a, off, lim)
@@ -757,9 +772,32 @@ function is_type_of (subname, tname) {
     return qb_tflags.is_type_of(subt && subt.name, t && t.name)
 }
 
-function code_of (v) {
-    var f = qb_tflags.vtype(v)
-    return CODES_BY_NAME[qb_tflags.FLAG_NAME[f]]
+// return the high-level (json-like) code for a value (nul, str, num, boo, blb, arr, or obj)
+function jcode_of (v) {
+    if (v == null) {
+        return TCODE.nul
+    }
+    switch (typeof v) {
+        case 'string':
+            return TCODE.str
+        case 'number':
+            return TCODE.num
+        case 'object':
+            if (v.$type) {
+                var tc = TCODE[v.$type]
+                return tc ? jcode(tc) : TCODE.obj
+            } else if (Array.isArray(v)) {
+                return TCODE.arr
+            } else if (ArrayBuffer.isView(v)) {
+                return TCODE.blb
+            } else {
+                return TCODE.obj
+            }
+        case 'boolean':
+            return TCODE.boo
+        default:
+            err('unknown type: ' + typeof v)
+    }
 }
 
 module.exports = {
@@ -769,7 +807,8 @@ module.exports = {
     props: function () { return PROPS },
     props_by_all_names: PROPS_BY_ALL_NAMES,
     types: function () { return TYPES },
-    codes_by_name: function () { return CODES_BY_NAME },
+    codes_by_name: function () { return TCODE },
+    names_by_code: function () { return NAMES_BY_CODE },
     types_by_all_names: function () { return TYPES_BY_ALL_NAMES },
     codes_by_all_names: function () { return TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t.code; return m}, {}) },
     types_by_code: function () { return TYPES_BY_CODE },
@@ -778,7 +817,7 @@ module.exports = {
     // what type codes to make public other than the basic codes.
     is_type_of: is_type_of,
     arr_type: arr_type,
-    code_of: code_of,
+    jcode_of: jcode_of,
 
     // exposed for testing only
     _unesc_caret: unesc_caret,

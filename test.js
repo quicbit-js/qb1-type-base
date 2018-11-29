@@ -39,20 +39,6 @@ test('types', function (t) {
     ], function(name_prop) { return tbase.types().map(function (t) { return t[name_prop]}) })
 })
 
-test('types_for_code', function (t) {
-    t.table_assert([
-        [ 'props',                 'tc_name', 'exp' ],
-        [ { mul: ['int'] },        'int',     [ 'int' ] ],
-        [ { mul: ['int'] },        'str',     [] ],
-        [ { mul: ['int', 'str'] }, 'str',     [ 'str' ] ],
-        [ { mul: ['int', 'str'] }, 'boo',     [] ],
-
-    ], function (props, tc_name) {
-        var t = tbase.create(props)
-        return t.types_for_code(TYPES[tc_name].code).map(function (t) { return t.name })
-    })
-})
-
 test('lookup', function (t) {
     t.table_assert([
         [ 'name',   'opt',              'exp' ],
@@ -120,11 +106,11 @@ test('byname', function (t) {
 test('create errors', function (t) {
     t.table_assert([
         [ 'create',                          'opt',   'exp'  ],
-        // [ {base: 'obj', name: 'foo' },       { custom_props: {tinyname: 'f'}},   /custom properties should have \$ prefix/ ],
-        // [ {base: 'obj', name: 'foo' },       { custom_props: {$tinyname: 'f'}},  /custom property cannot shadow/ ],
-        // [ {name: 'foo' },                    null,                               /no base specified/ ],
-        // [ {base: 'foo' },                    null,                               /unknown base/ ],
-        // [ {base: 'nul'},                     null,                               /cannot be created using properties/ ],
+        [ {base: 'obj', name: 'foo' },       { custom_props: {tinyname: 'f'}},   /custom properties should have \$ prefix/ ],
+        [ {base: 'obj', name: 'foo' },       { custom_props: {$tinyname: 'f'}},  /custom property cannot shadow/ ],
+        [ {name: 'foo' },                    null,                               /no base specified/ ],
+        [ {base: 'foo' },                    null,                               /unknown base/ ],
+        [ {base: 'nul'},                     null,                               /cannot be created using properties/ ],
         [ {base: 'any'},                     null,                               /cannot be created using properties/ ],
         [ {base: 'typ'},                     null,                               /cannot be created using properties/ ],
         [ {base: 'int', tinyname: 'foo' },   null,                               /tinyname without name/ ],
@@ -645,33 +631,53 @@ test('is_type_of', function (t) {
     })
 })
 
-test('code_of', function (t) {
+test('jcode_of', function (t) {
     t.table_assert([
         [ 'v',              'exp' ],
         [ null,             { nul: 0 } ],
         [ 'x',              { str: 1 } ],
-        [ {$type: 'num'},   { num: 2 } ],
+        [ { $type: 'num' }, { num: 2 } ],
         [ true,             { boo: 3 } ],
         [ [],               { arr: 4 } ],
         [ {},               { obj: 5 } ],
-        [ 0,                { byt: 6 } ],
-        [ 9,                { byt: 6 } ],
-        [ 256,              { int: 7 } ],
-        [ -1,               { int: 7 } ],
-        [ {$type: 'dec'},   { dec: 8 } ],
-        [ 1.2,              { flt: 9 } ],
+        [ 0,                { num: 2 } ],
+        [ 9,                { num: 2 } ],
+        [ 256,              { num: 2 } ],
+        [ -1,               { num: 2 } ],
+        [ { $type: 'dec' }, { num: 2 } ],
+        [ 1.2,              { num: 2 } ],
         [ 'UAR',            { blb: 10 } ],
-        [ { $type: 'any' }, { any: 11 } ],
-        [ { $type: 'mul' }, { mul: 12 } ],
-        [ { $type: 'typ' }, { typ: 13 } ],
+        [ { $type: 'any' }, { obj: 5 } ],
+        [ { $type: 'mul' }, { obj: 5 } ],
+        [ { $type: 'typ' }, { obj: 5 } ],
     ], function (v) {
         if (v === 'UAR') {
             v = new Uint8Array(0)
         }
-        var c = tbase.code_of(v)
+        var c = tbase.jcode_of(v)
         var ret = {}
         ret[CODE2TYPE[c]] = c
         return ret
+    })
+})
+
+test('bycode', function (t) {
+    t.table_assert([
+        [ 'props',                                           'exp' ],
+        [ { mul: ['i', 's', 'd'] },                          { str: ['str'], num: ['int', 'dec'] } ],
+        [ { mul: ['i', 'f', 'x'] },                          { num: ['int', 'flt', 'byt'] } ],
+        [ { mul: ['b', 'o', 'a'] },                          { boo: ['boo'], arr: [[]], obj: [{}] } ],
+        [ { mul: [{arr:['s','i']}, {arr:['b']}] },           { arr: [['str','int'], ['boo']] } ],
+        [ { mul: ['i', 'X', {obj:{a:'i'}}, {obj:{a:'s'}}] }, { num: ['int'], obj: [{a:'int'}, {a:'str'}], blb: ['blb'] } ],
+
+    ], function (props) {
+        var t = tbase.create(props)
+        return t.by_jcode.reduce(function (m, a, tc) {
+            if (a) {
+                m[CODE2TYPE[tc].name] = a.map(function (t) { return t.to_obj() })
+            }
+            return m
+        }, {})
     })
 })
 
