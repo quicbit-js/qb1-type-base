@@ -422,7 +422,7 @@ MulType.prototype = extend(Type.prototype, {
         }
         this.mul.push(t)
         if (t.container) { this.container = true }
-        this._byname = null
+        this._byname = this._by_jcode = null
     }
 })
 
