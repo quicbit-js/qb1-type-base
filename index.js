@@ -756,6 +756,7 @@ function create_from (v, opt) {
 
 var TYPES = create_immutable_types()
 var TYPES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t; return m}, {})
+var CODES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t.code; return m}, {})
 var TYPES_BY_CODE = TYPES.reduce(function (a,t) { a[t.code] = t; return a}, [])
 
 function arr_type (a, off, lim) {
@@ -805,13 +806,13 @@ module.exports = {
     create: create,
     lookup: lookup,
     props: function () { return PROPS },
-    props_by_all_names: PROPS_BY_ALL_NAMES,
     types: function () { return TYPES },
     codes_by_name: function () { return TCODE },
     names_by_code: function () { return NAMES_BY_CODE },
-    types_by_all_names: function () { return TYPES_BY_ALL_NAMES },
-    codes_by_all_names: function () { return TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname] = m[t.fullname] = t.code; return m}, {}) },
     types_by_code: function () { return TYPES_BY_CODE },
+    props_by_all_names: function () {return PROPS_BY_ALL_NAMES },
+    types_by_all_names: function () { return TYPES_BY_ALL_NAMES },
+    codes_by_all_names: function () { return CODES_BY_ALL_NAMES },
 
     // expose a couple functions powered by flags, but not the flags themselves (yet).  still thinking about
     // what type codes to make public other than the basic codes.
