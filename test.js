@@ -493,6 +493,7 @@ test('path with dynamic multi-types', function (t) {
     // define a type using different instances for each node.  equivalent of:
     //  > obj2typ({ a: { '$mul': [ 'str', 'my_int_arr' ] }, b: 'str', 'num*': 'int' })
     var str1 = lookup('str')
+    t.same(str1.depth, 0)
     var int1 = lookup('int')
     var mul1 = create({base: 'mul'})
 
@@ -520,10 +521,12 @@ test('path with dynamic multi-types', function (t) {
     var num1 = lookup('num')
     arr1.add_type(num1)
     t.equal(num1.path(), '0{num}')
+    t.equal(num1.depth, 1)
 
     mul1.add_type(arr1)
     t.equal(num1.path(), 'nested/a_multi{arr}/0{num}')
     t.same(mul1.to_obj(), { $mul: [ 'str', 'int', [ 'num' ] ] })
+    t.equal(str1.depth, 2)
 
     t.end()
 })

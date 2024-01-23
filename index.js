@@ -107,13 +107,16 @@ function jcode (code) {
     }
 }
 
+var TYPE_ID = 0
 function Type (base, props, opt) {
+    this.id = ++TYPE_ID
     this.immutable = !!(opt && opt.immutable)
     this.base = base
     this.code = TCODE[base]
     this.jcode = jcode(this.code)
     this.name = props.name || null
     this.desc = props.desc || null
+    this._depth = null
     if (props.name) {
         this.tinyname = props.tinyname || props.name
         this.fullname = props.fullname || props.name
@@ -149,6 +152,17 @@ Type.prototype = {
     // a type that can hold many values.  obj and arr are containers, as is any.  mul is a container iff it allows containers.
     container: false,
     type: 'type',
+    get depth () {
+        var d = 0
+        var p = this.parent
+        while (p) {
+            if (p.code !== TCODE.mul) {
+                d++
+            }
+            p = p.parent
+        }
+        return d
+    },
     toString: function () {
         if (this.name) { return this.name }
         return this.json()
@@ -186,6 +200,9 @@ Type.prototype = {
         opt = assign({name_depth: 0}, opt)
         return this._to_obj(opt, 0)
     },
+    toJSON: function () {
+        return this.to_obj()
+    },
     // return a path for humans - a path which:
     //    1. has the same structure as as the data it represents (by flattening multi types into their parent context)
     //    2. includes type information with array type indexes so they are more quickly understood
@@ -213,7 +230,7 @@ Type.prototype = {
             path.push(pstr)
         }
         return path.reverse().join('/')
-    }
+    },
 }
 
 // Any
@@ -730,7 +747,7 @@ function lookup (base_name, opt) {
         return null
     }
     if (opt && opt.create_opt) {
-        // return a base with all the same settings as the lookup instance (such as object {'*':'any'}) , but is a copy (for building graphs)
+        // return of the lookup instance (such as object {'*':'any'})
         var any = (base_type.name === 'obj' || base_type.name === 'arr') ? _create('any', type_props('any'), opt.create_opt) : null
         return _create(base_type.name, type_props(base_type.name, any), opt.create_opt)
     } else {
