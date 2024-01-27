@@ -761,7 +761,7 @@ function create_from (v, opt) {
     opt = opt || {}
     if (v.type === 'type') { return v }
     if (typeof v === 'string') {
-        return lookup(v, opt) || (opt.allow_unresolved ? v : err('no such type'))
+        return lookup(v, opt) || (opt.allow_unresolved ? v : err('no such type ' + v))
     } else {
         return create(v, opt)
     }
