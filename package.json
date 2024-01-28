@@ -5,7 +5,10 @@
   "homepage": "https://github.com/quicbit-js/qb1-type-base",
   "url": "https://github.com/quicbit-js/qb1-type-base/issues",
   "email": "support@quicbit.com",
-  "repository": "quicbit-js/qb1-type-base",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quicbit-js/qb1-type-base.git"
+  },
   "dependencies": {
     "qb-assign": "^1.0.2",
     "qb-extend-flat": "^2.0.3",
@@ -17,7 +20,9 @@
   },
   "scripts": {
     "test": "tape test.js",
-    "cov": "tap --coverage-report=html test.js"
+    "cov": "tap --coverage-report=html test.js",
+    "preversion": "npm test",
+    "postversion": "git push && npm publish"
   },
   "keywords": [
     "fast",
