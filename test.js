@@ -685,9 +685,9 @@ test('bycode', function (t) {
 })
 
 //
-// qb-type-flag tests
+// qb-type-flag tests (code to be separated from index.js)
 //
-var qb_tflag = require('./qb-type-flags')
+var qb_tflag = require('.')
 
 var FLAG_NAME = qb_tflag.FLAG_NAME
 

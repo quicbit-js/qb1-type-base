@@ -776,17 +776,17 @@ var CODES_BY_ALL_NAMES = TYPES.reduce(function (m,t) { m[t.name] = m[t.tinyname]
 var TYPES_BY_CODE = TYPES.reduce(function (a,t) { a[t.code] = t; return a}, [])
 
 function arr_type (a, off, lim) {
-    var atype = qb_tflags.arr_types(a, off, lim)
+    var atype = arr_types(a, off, lim)
     if (atype === 0) {
         return null
     }
-    return qb_tflags.FLAG_NAME[qb_tflags.to_single(atype)] || err('could not determine array type')
+    return FLAG_NAME[to_single(atype)] || err('could not determine array type')
 }
 
 function is_type_of (subname, tname) {
     var subt = TYPES_BY_ALL_NAMES[subname]
     var t = TYPES_BY_ALL_NAMES[tname]
-    return qb_tflags.is_type_of(subt && subt.name, t && t.name)
+    return is_type_of(subt && subt.name, t && t.name)
 }
 
 // return the high-level (json-like) code for a value (nul, str, num, boo, blb, arr, or obj)
